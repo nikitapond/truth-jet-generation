@@ -4,9 +4,10 @@ import argparse
 import time
 from pathlib import Path
 
+import awkward as ak
 import numpy as np
 
-from truthjets.cluster import cluster_jets, compute_jet_kinematics
+from truthjets.cluster import cluster_jets, compute_jet_kinematics, extract_particles
 from truthjets.config import (
     JetConfig,
     OutputConfig,
@@ -15,7 +16,8 @@ from truthjets.config import (
     load_pythia_config,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
-from truthjets.label import label_jets
+from truthjets.label_module import HadronConeExclLabelModule
+from truthjets.modules import load_module, validate_modules
 from truthjets.pileup import (
     generate_pileup_pool,
     load_pileup_pool,
@@ -122,6 +124,18 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--batch-size", type=int, default=10_000, help="Events per batch"
+    )
+
+    # Pipeline modules
+    parser.add_argument(
+        "--module",
+        action="append",
+        default=[],
+        metavar="IMPORT_PATH",
+        help=(
+            "Pipeline module to load (repeatable). "
+            "Format: 'my_package.my_module' or 'my_package.my_module:ClassName'"
+        ),
     )
 
     return parser.parse_args(argv)
@@ -231,10 +245,40 @@ def main(argv=None):
         save_pileup_pool(pu_pool, pool_path)
         print(f"  Saved pool to {pool_path}")
 
+    # Load and initialize pipeline modules
+    modules = []
+
+    # Auto-add HadronConeExcl labeling for R=0.4 jets
+    if jet_config.R == 0.4:
+        modules.append(HadronConeExclLabelModule())
+
+    for module_path in args.module:
+        mod = load_module(module_path)
+        modules.append(mod)
+
+    for mod in modules:
+        mod.init(jet_config)
+
+    if modules:
+        validate_modules(modules)
+        print(f"Loaded {len(modules)} module(s): {[type(m).__name__ for m in modules]}")
+
+    # Collect extra schemas from modules
+    extra_jet_fields = []
+    extra_datasets = {}
+    for mod in modules:
+        extra_jet_fields.extend(mod.extra_jet_fields())
+        extra_datasets.update(mod.extra_datasets())
+
     t0 = time.time()
 
     event_offset = 0
-    with HDF5Writer(output_config.output_path, jet_config) as writer:
+    with HDF5Writer(
+        output_config.output_path,
+        jet_config,
+        extra_jet_fields=extra_jet_fields or None,
+        extra_datasets=extra_datasets or None,
+    ) as writer:
         for i, events in enumerate(
             generate_events(pythia, output_config.n_events, output_config.batch_size)
         ):
@@ -263,6 +307,16 @@ def main(argv=None):
                     merged_particles, grid_size=jet_config.softkiller_grid,
                 )
 
+            # Extract particles for pre_clustering hooks (when no pileup)
+            if modules and merged_particles is None:
+                merged_particles = extract_particles(events)
+
+            # Pre-clustering hooks
+            for mod in modules:
+                result = mod.pre_clustering(events, merged_particles)
+                if result is not None:
+                    merged_particles = result
+
             # Cluster jets (with merged particles if pileup is active)
             jets, constits, jet_kin = cluster_jets(
                 events, jet_config, particles=merged_particles
@@ -275,13 +329,34 @@ def main(argv=None):
                 constits = constits[dz_mask]
                 jet_kin = jet_kin[dz_mask]
 
-            # Label jets using only HS events (not PU)
-            labels = label_jets(events, jet_kin.eta, jet_kin.phi, jet_config.R)
+            # Default labels (all light); labeling modules override via post_clustering
+            labels = ak.zeros_like(jet_kin.pt, dtype=np.int32)
+
+            # Post-clustering hooks
+            batch_extra_jet_data = {}
+            batch_extra_dataset_data = {}
+            for mod in modules:
+                result = mod.post_clustering(
+                    events, jets, constits, jet_kin, labels
+                )
+                if result is not None:
+                    if result.jet_kin is not None:
+                        jet_kin = result.jet_kin
+                    if result.labels is not None:
+                        labels = result.labels
+                    if result.jets is not None:
+                        jets = result.jets
+                    if result.constituents is not None:
+                        constits = result.constituents
+                    batch_extra_jet_data.update(result.extra_jet_data)
+                    batch_extra_dataset_data.update(result.extra_dataset_data)
 
             # Write to HDF5
             writer.write_batch(
                 jet_kin, labels, constits, jet_kin.eta, jet_kin.phi,
                 event_offset=event_offset,
+                extra_jet_data=batch_extra_jet_data or None,
+                extra_dataset_data=batch_extra_dataset_data or None,
             )
             event_offset += len(events.prt)
 

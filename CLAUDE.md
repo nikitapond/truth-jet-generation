@@ -37,9 +37,59 @@ All source lives in `src/truthjets/`:
 - **`cli.py`** — Entry point (`truthjets` command). Parses args, supports YAML config or CLI flags, runs the batch processing loop.
 - **`config.py`** — Three dataclasses (`PythiaConfig`, `JetConfig`, `OutputConfig`) plus `PROCESS_PRESETS` mapping process names to Pythia `readString` commands. `PythiaConfig.pythia_card` allows pointing to a `.cmnd` file instead of a preset.
 - **`generate.py`** — `init_pythia()` and `generate_events()` iterator yielding batches as Awkward Arrays.
-- **`cluster.py`** — `cluster_jets()` using FastJet (antikt/kt/cambridge algorithms) with eta cuts. `compute_jet_kinematics()` derives pt/eta/phi/mass.
+- **`cluster.py`** — `extract_particles()` pulls final-state particles from events. `cluster_jets()` uses FastJet (antikt/kt/cambridge algorithms) with eta cuts. `compute_jet_kinematics()` derives pt/eta/phi/mass.
 - **`label.py`** — PDG ID classification (`is_b_hadron`, `is_c_hadron`, `is_tau_lepton`) and `label_jets()` via dR-matching with priority: b > c > tau > light. Labels: 0=light, 4=c, 5=b, 15=tau.
-- **`writer.py`** — `HDF5Writer` with resizable/chunked datasets. Pads constituents to `max_constituents` (default 80), sorts by pT descending, computes relative coordinates (deta, dphi).
+- **`modules.py`** — Pipeline module system. `TruthJetModule` base class with `pre_clustering`/`post_clustering` hooks. `ModuleResult` and `DatasetSchema` dataclasses. `load_module()` and `validate_modules()`.
+- **`label_module.py`** — Built-in `HadronConeExclLabelModule` that wraps `label_jets()`. Auto-loaded for R=0.4 jets.
+- **`writer.py`** — `HDF5Writer` with resizable/chunked datasets. Pads constituents to `max_constituents` (default 80), sorts by pT descending, computes relative coordinates (deta, dphi). Supports extra jet fields and datasets from modules.
+
+## Pipeline Modules
+
+Modules hook into the event processing pipeline at two points: before jet clustering (to inspect/modify particles) and after clustering (to inspect/modify jets, add custom labels, compute derived quantities).
+
+### Built-in modules
+
+- **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`label_module.py`). Auto-loaded for R=0.4 jets. For non-0.4R jets, no labeling runs by default.
+
+### Using modules
+
+```bash
+# Custom module (auto-discovers single TruthJetModule subclass)
+truthjets --process ttbar -n 100000 -o out.h5 --module my_package.my_module
+
+# Explicit class name
+truthjets --process ttbar -n 100000 -o out.h5 --module my_package.my_module:ClassName
+
+# Multiple modules (repeatable)
+truthjets --process ttbar -n 100000 -o out.h5 --module mod_a --module mod_b
+```
+
+### Writing a module
+
+Subclass `TruthJetModule` and override the methods you need:
+
+```python
+from truthjets.modules import TruthJetModule, ModuleResult
+import numpy as np
+
+class MyModule(TruthJetModule):
+    def init(self, jet_config):
+        self.R = jet_config.R
+
+    def extra_jet_fields(self):
+        return [("my_score", np.float32)]
+
+    def post_clustering(self, events, jets, constituents, jet_kin, labels):
+        scores = compute_something(events, jet_kin)
+        return ModuleResult(extra_jet_data={"my_score": scores})
+```
+
+**Available methods:**
+- `init(jet_config)` — called once before processing
+- `pre_clustering(events, particles)` — return modified particles or None
+- `post_clustering(events, jets, constituents, jet_kin, labels)` — return `ModuleResult` or None
+- `extra_jet_fields()` — declare extra `/jets` columns as `[(name, dtype), ...]`
+- `extra_datasets()` — declare extra HDF5 datasets as `{name: DatasetSchema(dtype, shape_suffix)}`
 
 ## HDF5 Output Format
 
