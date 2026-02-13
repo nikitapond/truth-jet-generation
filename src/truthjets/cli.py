@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -15,7 +16,14 @@ from truthjets.config import (
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
 from truthjets.label import label_jets
-from truthjets.pileup import overlay_pileup, sample_n_pileup
+from truthjets.pileup import (
+    generate_pileup_pool,
+    load_pileup_pool,
+    overlay_pileup,
+    sample_from_pool,
+    sample_n_pileup,
+    save_pileup_pool,
+)
 from truthjets.pileup_rejection import softkiller, vertex_z_filter
 from truthjets.writer import HDF5Writer
 
@@ -51,6 +59,14 @@ def parse_args(argv=None):
         "--pu", type=float, default=None, metavar="MU",
         help="Mean number of pileup interactions (Poisson mu). Disabled by default.",
     )
+    parser.add_argument(
+        "--pu-pre-gen", type=int, default=None, metavar="N",
+        help="Pre-generate N PU events upfront, save to file, then sample from pool.",
+    )
+    parser.add_argument(
+        "--pu-file", type=str, default=None, metavar="PATH",
+        help="Load pre-generated PU pool from file (skip Pythia PU generation).",
+    )
 
     # Jet settings
     parser.add_argument("-R", type=float, default=0.4, help="Jet radius")
@@ -59,6 +75,12 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--jet-eta-max", type=float, default=2.5, help="Maximum jet |eta|"
+    )
+    parser.add_argument(
+        "--constituent-pt-min",
+        type=float,
+        default=0.5,
+        help="Minimum constituent pT in GeV (default: 0.5)",
     )
     parser.add_argument(
         "--max-constituents",
@@ -127,6 +149,7 @@ def main(argv=None):
     jet_config.R = args.R
     jet_config.pt_min = args.jet_pt_min
     jet_config.eta_max = args.jet_eta_max
+    jet_config.constituent_pt_min = args.constituent_pt_min
     jet_config.max_constituents = args.max_constituents
     if args.softkiller:
         jet_config.softkiller = True
@@ -140,6 +163,18 @@ def main(argv=None):
     # Set pileup mu from CLI
     if args.pu is not None:
         pythia_config.mu = args.pu
+
+    # Pileup pool settings
+    if args.pu_pre_gen is not None:
+        pythia_config.pu_pre_gen = args.pu_pre_gen
+    if args.pu_file is not None:
+        pythia_config.pu_file = args.pu_file
+
+    # Validate pileup pool flags
+    if pythia_config.pu_pre_gen is not None and pythia_config.pu_file is not None:
+        raise SystemExit("error: cannot use both --pu-pre-gen and --pu-file")
+    if (pythia_config.pu_pre_gen is not None or pythia_config.pu_file is not None) and pythia_config.mu is None:
+        raise SystemExit("error: --pu-pre-gen and --pu-file require --pu to be set")
 
     print(f"Process: {pythia_config.process}")
     print(f"ECM: {pythia_config.ecm} GeV")
@@ -157,12 +192,26 @@ def main(argv=None):
     # Initialize Pythia
     pythia = init_pythia(pythia_config)
 
-    # Initialize pileup Pythia if mu is set
+    # Initialize pileup Pythia if mu is set (skip if using pre-generated file)
     pythia_pu = None
     pu_rng = None
     if pythia_config.mu is not None:
-        pythia_pu = init_pileup_pythia(pythia_config)
         pu_rng = np.random.default_rng(pythia_config.seed + 100)
+        if pythia_config.pu_file is None:
+            pythia_pu = init_pileup_pythia(pythia_config)
+
+    # Load or generate pileup pool
+    pu_pool = None
+    if pythia_config.pu_file:
+        print(f"Loading PU pool from {pythia_config.pu_file}")
+        pu_pool = load_pileup_pool(pythia_config.pu_file)
+        print(f"  Pool size: {len(pu_pool)} events")
+    elif pythia_config.pu_pre_gen:
+        print(f"Pre-generating {pythia_config.pu_pre_gen} PU events...")
+        pu_pool = generate_pileup_pool(pythia_pu, pythia_config.pu_pre_gen)
+        pool_path = f"{Path(output_config.output_path).stem}_{pythia_config.pu_pre_gen}_pu_events.h5"
+        save_pileup_pool(pu_pool, pool_path)
+        print(f"  Saved pool to {pool_path}")
 
     t0 = time.time()
 
@@ -175,14 +224,20 @@ def main(argv=None):
 
             # Pileup overlay
             merged_particles = None
-            if pythia_pu is not None:
+            if pythia_config.mu is not None:
                 n_events_in_batch = len(events.prt)
                 n_pu = sample_n_pileup(pythia_config.mu, n_events_in_batch, pu_rng)
                 total_pu = int(np.sum(n_pu))
-                pu_events = generate_pileup_batch(pythia_pu, total_pu)
-                merged_particles = overlay_pileup(
-                    events, pu_events, n_pu, rng=pu_rng,
-                )
+                if pu_pool is not None:
+                    pu_particles = sample_from_pool(pu_pool, total_pu, rng=pu_rng)
+                    merged_particles = overlay_pileup(
+                        events, None, n_pu, rng=pu_rng, pu_particles=pu_particles,
+                    )
+                else:
+                    pu_events = generate_pileup_batch(pythia_pu, total_pu)
+                    merged_particles = overlay_pileup(
+                        events, pu_events, n_pu, rng=pu_rng,
+                    )
 
             # Apply SoftKiller before clustering
             if jet_config.softkiller and merged_particles is not None:

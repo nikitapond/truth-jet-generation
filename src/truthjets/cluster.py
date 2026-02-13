@@ -69,6 +69,11 @@ def cluster_jets(events, jet_config: JetConfig, particles=None):
     jets = cluster.inclusive_jets(min_pt=jet_config.pt_min)
     constits = cluster.constituents(min_pt=jet_config.pt_min)
 
+    # Apply constituent pT cut
+    if jet_config.constituent_pt_min > 0:
+        c_pt = np.sqrt(constits.px**2 + constits.py**2)
+        constits = constits[c_pt >= jet_config.constituent_pt_min]
+
     # Compute jet kinematics for eta cut
     jet_kin = compute_jet_kinematics(jets)
 

@@ -14,6 +14,8 @@ class PythiaConfig:
     pt_hat_max: float | None = None
     seed: int = 42
     mu: float | None = None
+    pu_pre_gen: int | None = None
+    pu_file: str | None = None
     extra_settings: list[str] = field(default_factory=list)
 
 
@@ -26,6 +28,7 @@ class JetConfig:
     max_constituents: int = 80
     softkiller: bool = False
     softkiller_grid: float = 0.4
+    constituent_pt_min: float = 0.5  # GeV, min pT for constituents
     max_dz: float | None = None  # mm, vertex z cut for PU rejection
 
 
@@ -66,6 +69,8 @@ def load_pythia_config(path: str | Path) -> PythiaConfig:
         pt_hat_max=data.get("pt_hat_max"),
         seed=data.get("seed", 42),
         mu=data.get("mu"),
+        pu_pre_gen=data.get("pu_pre_gen"),
+        pu_file=data.get("pu_file"),
         extra_settings=data.get("extra_settings", []),
     )
 
@@ -84,6 +89,7 @@ def load_jet_and_output_config(
         pt_min=jet_data.get("pt_min", 20.0),
         eta_max=jet_data.get("eta_max", 2.5),
         max_constituents=jet_data.get("max_constituents", 80),
+        constituent_pt_min=jet_data.get("constituent_pt_min", 0.5),
         softkiller=jet_data.get("softkiller", False),
         softkiller_grid=jet_data.get("softkiller_grid", 0.4),
         max_dz=jet_data.get("max_dz"),

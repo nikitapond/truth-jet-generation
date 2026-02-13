@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import awkward as ak
 import h5py
 import numpy as np
@@ -41,6 +43,7 @@ class HDF5Writer:
     def __init__(self, path: str, jet_config: JetConfig):
         self.path = path
         self.max_constituents = jet_config.max_constituents
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.file = h5py.File(path, "w")
 
         # Create resizable datasets
@@ -50,6 +53,9 @@ class HDF5Writer:
             maxshape=(None,),
             dtype=JET_DTYPE,
             chunks=(1000,),
+            compression="gzip",
+            compression_opts=7,
+            shuffle=True,
         )
         self.constit_ds = self.file.create_dataset(
             "constituents",
@@ -57,6 +63,9 @@ class HDF5Writer:
             maxshape=(None, self.max_constituents),
             dtype=CONSTITUENT_DTYPE,
             chunks=(1000, self.max_constituents),
+            compression="gzip",
+            compression_opts=7,
+            shuffle=True,
         )
         self._n_jets = 0
 
