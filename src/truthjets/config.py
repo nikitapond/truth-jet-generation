@@ -24,6 +24,9 @@ class JetConfig:
     pt_min: float = 20.0
     eta_max: float = 2.5
     max_constituents: int = 80
+    softkiller: bool = False
+    softkiller_grid: float = 0.4
+    max_dz: float | None = None  # mm, vertex z cut for PU rejection
 
 
 @dataclass
@@ -81,6 +84,9 @@ def load_jet_and_output_config(
         pt_min=jet_data.get("pt_min", 20.0),
         eta_max=jet_data.get("eta_max", 2.5),
         max_constituents=jet_data.get("max_constituents", 80),
+        softkiller=jet_data.get("softkiller", False),
+        softkiller_grid=jet_data.get("softkiller_grid", 0.4),
+        max_dz=jet_data.get("max_dz"),
     )
     output_config = OutputConfig(
         output_path=out_data.get("path", "jets.h5"),

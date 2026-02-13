@@ -16,6 +16,7 @@ from truthjets.config import (
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
 from truthjets.label import label_jets
 from truthjets.pileup import overlay_pileup, sample_n_pileup
+from truthjets.pileup_rejection import softkiller, vertex_z_filter
 from truthjets.writer import HDF5Writer
 
 
@@ -66,6 +67,25 @@ def parse_args(argv=None):
         help="Max constituents per jet (zero-padded)",
     )
 
+    # Pileup rejection
+    parser.add_argument(
+        "--softkiller",
+        action="store_true",
+        help="Enable SoftKiller pileup mitigation before clustering",
+    )
+    parser.add_argument(
+        "--softkiller-grid",
+        type=float,
+        default=0.4,
+        help="SoftKiller grid size in rapidity-phi (default: 0.4)",
+    )
+    parser.add_argument(
+        "--max-dz",
+        type=float,
+        default=None,
+        help="Vertex z cut in mm — reject jets with |<vz>| > max_dz",
+    )
+
     # Output settings
     parser.add_argument(
         "-o", "--output", default="jets.h5", help="Output HDF5 path"
@@ -108,6 +128,11 @@ def main(argv=None):
     jet_config.pt_min = args.jet_pt_min
     jet_config.eta_max = args.jet_eta_max
     jet_config.max_constituents = args.max_constituents
+    if args.softkiller:
+        jet_config.softkiller = True
+    jet_config.softkiller_grid = args.softkiller_grid
+    if args.max_dz is not None:
+        jet_config.max_dz = args.max_dz
     output_config.output_path = args.output
     output_config.n_events = args.n_events
     output_config.batch_size = args.batch_size
@@ -120,6 +145,10 @@ def main(argv=None):
     print(f"ECM: {pythia_config.ecm} GeV")
     if pythia_config.mu is not None:
         print(f"Pileup: <mu> = {pythia_config.mu}")
+    if jet_config.softkiller:
+        print(f"SoftKiller: grid_size={jet_config.softkiller_grid}")
+    if jet_config.max_dz is not None:
+        print(f"Vertex z cut: |<vz>| < {jet_config.max_dz} mm")
     print(f"Jet R={jet_config.R}, pT>{jet_config.pt_min} GeV, |eta|<{jet_config.eta_max}")
     print(f"Events: {output_config.n_events}, batch size: {output_config.batch_size}")
     print(f"Output: {output_config.output_path}")
@@ -151,12 +180,27 @@ def main(argv=None):
                 n_pu = sample_n_pileup(pythia_config.mu, n_events_in_batch, pu_rng)
                 total_pu = int(np.sum(n_pu))
                 pu_events = generate_pileup_batch(pythia_pu, total_pu)
-                merged_particles = overlay_pileup(events, pu_events, n_pu)
+                merged_particles = overlay_pileup(
+                    events, pu_events, n_pu, rng=pu_rng,
+                )
+
+            # Apply SoftKiller before clustering
+            if jet_config.softkiller and merged_particles is not None:
+                merged_particles = softkiller(
+                    merged_particles, grid_size=jet_config.softkiller_grid,
+                )
 
             # Cluster jets (with merged particles if pileup is active)
             jets, constits, jet_kin = cluster_jets(
                 events, jet_config, particles=merged_particles
             )
+
+            # Apply vertex z filter after clustering
+            if jet_config.max_dz is not None and merged_particles is not None:
+                dz_mask = vertex_z_filter(constits, jet_kin, jet_config.max_dz)
+                jets = jets[dz_mask]
+                constits = constits[dz_mask]
+                jet_kin = jet_kin[dz_mask]
 
             # Label jets using only HS events (not PU)
             labels = label_jets(events, jet_kin.eta, jet_kin.phi, jet_config.R)

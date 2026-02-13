@@ -29,6 +29,12 @@ def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
     if config.pt_hat_max is not None:
         pythia.readString(f"PhaseSpace:pTHatMax = {config.pt_hat_max}")
 
+    # Vertex smearing (realistic spatial origins for particles)
+    pythia.readString("Beams:allowVertexSpread = on")
+    pythia.readString("Beams:sigmaVertexX = 0.015")
+    pythia.readString("Beams:sigmaVertexY = 0.015")
+    pythia.readString("Beams:sigmaVertexZ = 53.0")
+
     # Random seed
     pythia.readString("Random:setSeed = on")
     pythia.readString(f"Random:seed = {config.seed}")
@@ -50,6 +56,12 @@ def init_pileup_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
 
     pythia.readString("SoftQCD:nonDiffractive = on")
     pythia.readString(f"Beams:eCM = {config.ecm}")
+
+    # Vertex smearing (realistic spatial origins for particles)
+    pythia.readString("Beams:allowVertexSpread = on")
+    pythia.readString("Beams:sigmaVertexX = 0.015")
+    pythia.readString("Beams:sigmaVertexY = 0.015")
+    pythia.readString("Beams:sigmaVertexZ = 53.0")
 
     # Use seed offset to avoid correlation with hard-scatter
     pythia.readString("Random:setSeed = on")
