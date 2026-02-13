@@ -8,8 +8,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
-LABEL_MAP = {0: "light", 4: "c-jet", 5: "b-jet", 15: r"$\tau$-jet"}
-LABEL_COLORS = {0: "C0", 4: "C1", 5: "C2", 15: "C3"}
+LABEL_MAP = {
+    0: "light", 4: "c-jet", 5: "b-jet", 15: r"$\tau$-jet",
+    6: "top", 23: "Z", 24: "W", 25: "Higgs",
+}
+LABEL_COLORS = {
+    0: "C0", 4: "C1", 5: "C2", 15: "C3",
+    6: "C3", 23: "C1", 24: "C4", 25: "C2",
+}
 
 
 def load_data(path: str | Path) -> tuple[np.ndarray, np.ndarray]:

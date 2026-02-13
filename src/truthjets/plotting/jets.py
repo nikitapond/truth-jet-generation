@@ -17,6 +17,16 @@ from truthjets.plotting import (
 )
 
 
+def _data_ranges(jets):
+    """Compute data-driven pT and mass axis ranges from jet arrays."""
+    pt = jets["pt"]
+    mass = jets["mass"]
+    pt_lo = max(0, np.percentile(pt, 1) - 10)
+    pt_hi = np.percentile(pt, 99) * 1.1
+    mass_hi = np.percentile(mass, 99) * 1.2
+    return (pt_lo, pt_hi), (0, mass_hi)
+
+
 def _compute_substructure(jets, constit):
     """Pre-compute per-jet substructure variables from constituents.
 
@@ -80,13 +90,16 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
     # Pre-compute substructure for later pages
     sub = _compute_substructure(jets, constit)
 
+    # Data-driven axis ranges
+    pt_range, mass_range = _data_ranges(jets)
+
     # --- Page 1: core jet kinematics ---
     fig, axes = plt.subplots(3, 2, figsize=(12, 14))
     fig.suptitle(f"Jet Distributions ({len(jets)} jets)", fontsize=14, y=0.98)
 
     # Jet pT
     ax = axes[0, 0]
-    flavor_hist(ax, jets["pt"], np.linspace(20, 400, 50), labels, unique_labels)
+    flavor_hist(ax, jets["pt"], np.linspace(*pt_range, 50), labels, unique_labels)
     ax.set_xlabel("Jet $p_T$ [GeV]")
     ax.set_ylabel("Jets")
     ax.set_yscale("log")
@@ -101,7 +114,7 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
 
     # Jet mass
     ax = axes[1, 0]
-    flavor_hist(ax, jets["mass"], np.linspace(0, 50, 50), labels, unique_labels)
+    flavor_hist(ax, jets["mass"], np.linspace(*mass_range, 50), labels, unique_labels)
     ax.set_xlabel("Jet mass [GeV]")
     ax.set_ylabel("Jets")
     ax.legend()
@@ -147,16 +160,16 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
     figs.append(fig)
 
     # --- Page 2: kinematics II ---
-    figs.append(_plot_kinematics_ii(jets, labels, unique_labels))
+    figs.append(_plot_kinematics_ii(jets, labels, unique_labels, pt_range, mass_range))
 
     # --- Page 3: substructure ---
-    figs.append(_plot_substructure(jets, constit, labels, unique_labels, sub))
+    figs.append(_plot_substructure(jets, constit, labels, unique_labels, sub, pt_range))
 
     # --- Page 4: 2D correlations ---
-    figs.append(_plot_2d_correlations(jets, constit, labels, unique_labels, sub))
+    figs.append(_plot_2d_correlations(jets, constit, labels, unique_labels, sub, pt_range, mass_range))
 
     # --- Page 5: flavor-comparison profiles ---
-    figs.append(_plot_flavor_profiles(jets, labels, unique_labels, sub))
+    figs.append(_plot_flavor_profiles(jets, labels, unique_labels, sub, pt_range))
 
     # --- Jet display pages (one per flavor) ---
     figs.extend(_plot_jet_displays(jets, constit, labels, unique_labels))
@@ -164,12 +177,12 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
     # --- Pileup page (if present) ---
     has_pu = "pt_frac_pu" in jets.dtype.names and np.any(jets["pt_frac_pu"] > 0)
     if has_pu:
-        figs.append(_plot_pileup(jets, constit, labels, unique_labels))
+        figs.append(_plot_pileup(jets, constit, labels, unique_labels, pt_range))
 
     return figs
 
 
-def _plot_kinematics_ii(jets, labels, unique_labels):
+def _plot_kinematics_ii(jets, labels, unique_labels, pt_range, mass_range):
     """Page 2: additional jet kinematics."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("Jet Kinematics II", fontsize=14)
@@ -191,7 +204,8 @@ def _plot_kinematics_ii(jets, labels, unique_labels):
 
     # Jet pT (log-spaced bins)
     ax = axes[1, 0]
-    log_bins = np.geomspace(20, max(jets["pt"].max(), 21), 50)
+    log_lo = max(pt_range[0], 1)  # geomspace needs > 0
+    log_bins = np.geomspace(log_lo, max(jets["pt"].max(), log_lo + 1), 50)
     flavor_hist(ax, jets["pt"], log_bins, labels, unique_labels)
     ax.set_xlabel("Jet $p_T$ [GeV]")
     ax.set_ylabel("Jets")
@@ -203,7 +217,7 @@ def _plot_kinematics_ii(jets, labels, unique_labels):
     ax = axes[1, 1]
     h = ax.hist2d(
         jets["pt"], jets["mass"],
-        bins=[np.linspace(20, 400, 50), np.linspace(0, 50, 50)],
+        bins=[np.linspace(*pt_range, 50), np.linspace(*mass_range, 50)],
         cmin=1,
     )
     fig.colorbar(h[3], ax=ax, label="Jets")
@@ -215,7 +229,7 @@ def _plot_kinematics_ii(jets, labels, unique_labels):
     return fig
 
 
-def _plot_substructure(jets, constit, labels, unique_labels, sub):
+def _plot_substructure(jets, constit, labels, unique_labels, sub, pt_range):
     """Page 3: substructure / constituent summary."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("Jet Substructure", fontsize=14)
@@ -232,7 +246,7 @@ def _plot_substructure(jets, constit, labels, unique_labels, sub):
     nc = jets["n_constituents"]
     h = ax.hist2d(
         jets["pt"], nc.astype(float),
-        bins=[np.linspace(20, 400, 50), np.arange(0, nc.max() + 2) - 0.5],
+        bins=[np.linspace(*pt_range, 50), np.arange(0, nc.max() + 2) - 0.5],
         cmin=1,
     )
     fig.colorbar(h[3], ax=ax, label="Jets")
@@ -278,7 +292,7 @@ def _plot_substructure(jets, constit, labels, unique_labels, sub):
     return fig
 
 
-def _plot_2d_correlations(jets, constit, labels, unique_labels, sub):
+def _plot_2d_correlations(jets, constit, labels, unique_labels, sub, pt_range, mass_range):
     """Page 4: 2D correlations."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("2D Correlations", fontsize=14)
@@ -297,7 +311,7 @@ def _plot_2d_correlations(jets, constit, labels, unique_labels, sub):
 
     # Mean N constituents vs pT (profile by flavor)
     ax = axes[0, 1]
-    pt_bins = np.linspace(20, 400, 25)
+    pt_bins = np.linspace(*pt_range, 25)
     nc = jets["n_constituents"].astype(float)
     flavor_profile(ax, jets["pt"], nc, pt_bins, labels, unique_labels)
     ax.set_xlabel("Jet $p_T$ [GeV]")
@@ -309,7 +323,7 @@ def _plot_2d_correlations(jets, constit, labels, unique_labels, sub):
     ax = axes[1, 0]
     h = ax.hist2d(
         nc, jets["mass"],
-        bins=[np.arange(0, nc.max() + 2) - 0.5, np.linspace(0, 50, 50)],
+        bins=[np.arange(0, nc.max() + 2) - 0.5, np.linspace(*mass_range, 50)],
         cmin=1,
     )
     fig.colorbar(h[3], ax=ax, label="Jets")
@@ -332,12 +346,12 @@ def _plot_2d_correlations(jets, constit, labels, unique_labels, sub):
     return fig
 
 
-def _plot_flavor_profiles(jets, labels, unique_labels, sub):
+def _plot_flavor_profiles(jets, labels, unique_labels, sub, pt_range):
     """Page 5: flavor-comparison profile plots."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("Flavor Profiles vs Jet $p_T$", fontsize=14)
 
-    pt_bins = np.linspace(20, 400, 25)
+    pt_bins = np.linspace(*pt_range, 25)
 
     # Mean mass vs pT by flavor
     ax = axes[0, 0]
@@ -364,11 +378,11 @@ def _plot_flavor_profiles(jets, labels, unique_labels, sub):
     ax.set_title("Mean N constituents vs $p_T$")
     ax.legend()
 
-    # b-jet purity vs pT
+    # Flavor fraction vs pT
     ax = axes[1, 1]
     pt_centers = 0.5 * (pt_bins[:-1] + pt_bins[1:])
-    for fid in [5, 4, 15]:
-        if fid not in unique_labels:
+    for fid in unique_labels:
+        if fid == 0:
             continue
         fracs = []
         for lo, hi in zip(pt_bins[:-1], pt_bins[1:]):
@@ -531,7 +545,7 @@ def _plot_jet_displays(jets, constit, labels, unique_labels, n_jets=N_DISPLAY_JE
     return figs
 
 
-def _plot_pileup(jets, constit, labels, unique_labels):
+def _plot_pileup(jets, constit, labels, unique_labels, pt_range):
     """Create pileup-specific distribution page."""
     pt_frac_pu = jets["pt_frac_pu"]
     is_pu = constit["is_pu"]
@@ -561,7 +575,7 @@ def _plot_pileup(jets, constit, labels, unique_labels):
     ax = axes[1, 0]
     h = ax.hist2d(
         jets["pt"], pt_frac_pu,
-        bins=[np.linspace(20, 400, 50), np.linspace(0, 1, 50)],
+        bins=[np.linspace(*pt_range, 50), np.linspace(0, 1, 50)],
         cmin=1,
     )
     fig.colorbar(h[3], ax=ax, label="Jets")
@@ -570,7 +584,7 @@ def _plot_pileup(jets, constit, labels, unique_labels):
 
     # Mean pt_frac_pu vs jet pT profile
     ax = axes[1, 1]
-    pt_bins = np.linspace(20, 400, 25)
+    pt_bins = np.linspace(*pt_range, 25)
     flavor_profile(ax, jets["pt"], pt_frac_pu, pt_bins, labels, unique_labels)
     ax.set_xlabel("Jet $p_T$ [GeV]")
     ax.set_ylabel(r"$\langle$ Pileup $p_T$ fraction $\rangle$")
