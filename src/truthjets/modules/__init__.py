@@ -213,3 +213,11 @@ def validate_modules(modules: list[TruthJetModule]) -> None:
                     f"'{seen_datasets[ds_name]}'"
                 )
             seen_datasets[ds_name] = mod_name
+
+
+# Re-export label module classes for convenience
+from truthjets.modules.label import (  # noqa: E402, F401
+    HadronConeExclLabelModule,
+    LargeRLabelModule,
+    label_large_r_jets,
+)

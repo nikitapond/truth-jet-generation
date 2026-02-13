@@ -43,8 +43,9 @@ All source lives in `src/truthjets/`:
 - **`generate.py`** — `init_pythia()` and `generate_events()` iterator yielding batches as Awkward Arrays.
 - **`cluster.py`** — `extract_particles()` pulls final-state particles from events. `cluster_jets()` uses FastJet (antikt/kt/cambridge algorithms) with eta cuts. `compute_jet_kinematics()` derives pt/eta/phi/mass.
 - **`label.py`** — PDG ID classification (`is_b_hadron`, `is_c_hadron`, `is_tau_lepton`) and `label_jets()` via dR-matching with priority: b > c > tau > light. Labels: 0=light, 4=c, 5=b, 15=tau.
-- **`modules.py`** — Pipeline module system. `TruthJetModule` base class with `pre_clustering`/`post_clustering` hooks. `ModuleResult` and `DatasetSchema` dataclasses. `load_module()` and `validate_modules()`.
-- **`label_module.py`** — Built-in `HadronConeExclLabelModule` that wraps `label_jets()`. Auto-loaded for R=0.4 jets.
+- **`modules/`** — Pipeline module package. `TruthJetModule` base class with `pre_clustering`/`post_clustering` hooks. `ModuleResult` and `DatasetSchema` dataclasses. `load_module()` and `validate_modules()`.
+  - **`modules/label.py`** — Built-in `HadronConeExclLabelModule` (b/c/tau labeling) and `LargeRLabelModule` (W/Z/H/top labeling).
+  - **`modules/bb_opening_angle.py`** — `BBOpeningAngleModule` for computing dR between b-hadron pairs in large-R jets.
 - **`writer.py`** — `HDF5Writer` with resizable/chunked datasets. Pads constituents to `max_constituents` (default 80), sorts by pT descending, computes relative coordinates (deta, dphi). Supports extra jet fields and datasets from modules.
 
 ## Pipeline Modules
@@ -53,8 +54,9 @@ Modules hook into the event processing pipeline at two points: before jet cluste
 
 ### Built-in modules
 
-- **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`label_module.py`). Auto-loaded for R=0.4 jets.
-- **`LargeRLabelModule`** — dR-matched W/Z/H/top labeling (`label_module.py`). Auto-loaded for R > 0.4 jets. Labels: 0=QCD, 6=top, 23=Z, 24=W, 25=Higgs (PDG IDs). Priority: top > H > Z > W.
+- **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`modules/label.py`). Auto-loaded for R=0.4 jets.
+- **`LargeRLabelModule`** — dR-matched W/Z/H/top labeling (`modules/label.py`). Auto-loaded for R > 0.4 jets. Labels: 0=QCD, 6=top, 23=Z, 24=W, 25=Higgs (PDG IDs). Priority: top > H > Z > W.
+- **`BBOpeningAngleModule`** — Computes `bb_dR` opening angle between exactly 2 b-hadrons matched to a large-R jet (`modules/bb_opening_angle.py`). Jets with != 2 matched b-hadrons get NaN. Requires R > 0.4.
 
 ### Using modules
 

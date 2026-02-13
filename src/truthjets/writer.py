@@ -191,7 +191,13 @@ class HDF5Writer:
         # Fill extra jet columns from modules
         if extra_jet_data:
             for field_name, values in extra_jet_data.items():
-                jet_array[field_name] = values
+                if isinstance(values, np.ndarray):
+                    flat_values = values
+                else:
+                    flat_values = ak.to_numpy(ak.flatten(values))
+                jet_array[field_name] = flat_values.astype(
+                    jet_array[field_name].dtype
+                )
 
         # Extend datasets
         self.jets_ds.resize(self._n_jets + n_new, axis=0)
@@ -204,7 +210,11 @@ class HDF5Writer:
             for ds_name, data in extra_dataset_data.items():
                 ds = self._extra_ds[ds_name]
                 ds.resize(self._n_jets + n_new, axis=0)
-                ds[self._n_jets : self._n_jets + n_new] = data
+                if isinstance(data, np.ndarray):
+                    flat_data = data
+                else:
+                    flat_data = ak.to_numpy(ak.flatten(data))
+                ds[self._n_jets : self._n_jets + n_new] = flat_data
 
         self._n_jets += n_new
 

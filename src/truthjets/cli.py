@@ -16,8 +16,12 @@ from truthjets.config import (
     load_pythia_config,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
-from truthjets.label_module import HadronConeExclLabelModule, LargeRLabelModule
-from truthjets.modules import load_module, validate_modules
+from truthjets.modules import (
+    HadronConeExclLabelModule,
+    LargeRLabelModule,
+    load_module,
+    validate_modules,
+)
 from truthjets.pileup import (
     generate_pileup_pool,
     load_pileup_pool,
