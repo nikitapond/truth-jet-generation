@@ -33,28 +33,130 @@ truthjets --process zprime_tt -n 100000 -o zprime_jets.h5
 
 ### Options
 
+**Config files** (override individual flags):
+
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--process` | `qcd` | Physics process (`qcd`, `ttbar`, `zprime_tt`) |
+| `--pythia-config` | — | Path to Pythia YAML config file |
+| `--jet-config` | — | Path to jet/output YAML config file |
+
+**Pythia settings** (exactly one of `--process` or `--pythia-card` is required):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--process` | — | Physics process preset (`qcd`, `ttbar`, `zprime_tt`) |
+| `--pythia-card` | — | Path to a Pythia command file (`.cmnd`) |
 | `--ecm` | `13600` | Centre-of-mass energy [GeV] |
 | `--pt-hat-min` | — | Minimum pTHat cut [GeV] |
 | `--pt-hat-max` | — | Maximum pTHat cut [GeV] |
 | `--seed` | `42` | Random seed |
+
+**Pileup:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--pu MU` | — | Mean number of pileup interactions (Poisson mu). Disabled by default |
+| `--pu-pre-gen N` | — | Pre-generate N PU events upfront, save to file, then sample from pool |
+| `--pu-file PATH` | — | Load pre-generated PU pool from file (skip Pythia PU generation) |
+
+**Jet clustering:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
 | `-R` | `0.4` | Jet radius |
 | `--jet-pt-min` | `20` | Minimum jet pT [GeV] |
 | `--jet-eta-max` | `2.5` | Maximum jet \|eta\| |
+| `--constituent-pt-min` | `0.5` | Minimum constituent pT [GeV] |
 | `--max-constituents` | `80` | Constituents per jet (zero-padded) |
-| `-n` | `100000` | Number of events |
+
+**Pileup rejection:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--softkiller` | off | Enable SoftKiller pileup mitigation before clustering |
+| `--softkiller-grid` | `0.4` | SoftKiller grid size in rapidity-phi |
+| `--max-dz` | — | Vertex z cut in mm — reject jets with \|&lt;vz&gt;\| > max_dz |
+
+**Output:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o`, `--output` | `jets.h5` | Output HDF5 path |
+| `-n`, `--n-events` | `100000` | Number of events |
 | `--batch-size` | `10000` | Events per batch |
-| `-o` | `jets.h5` | Output HDF5 path |
 
 ## Plotting
 
+Four plotting scripts are provided in `scripts/`:
+
+### `plot_jets.py` — Jet-level distributions
+
 ```bash
-python scripts/plot_jets.py ttbar_jets.h5 -o ttbar_plots.pdf
+python scripts/plot_jets.py <input.h5> [-o jets.pdf]
 ```
 
-Produces a 6-panel PDF with jet pT, eta, mass, flavor composition, constituent multiplicity, and leading constituent pT fraction — all broken down by truth flavor label.
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `input` | (required) | Input HDF5 file |
+| `-o`, `--output` | `jets.pdf` | Output PDF path |
+
+### `plot_events.py` — Event-level distributions
+
+```bash
+python scripts/plot_events.py <input.h5> [-o events.pdf]
+```
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `input` | (required) | Input HDF5 file |
+| `-o`, `--output` | `events.pdf` | Output PDF path |
+
+### `plot_constituents.py` — Constituent-level distributions
+
+```bash
+python scripts/plot_constituents.py <input.h5> [-o constituents.pdf]
+```
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `input` | (required) | Input HDF5 file |
+| `-o`, `--output` | `constituents.pdf` | Output PDF path |
+
+### `plot_all.py` — Run all plot scripts at once
+
+```bash
+python scripts/plot_all.py <input.h5> [-o plots/]
+```
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `input` | (required) | Input HDF5 file |
+| `-o`, `--output-dir` | `plots/` | Output directory for PDFs |
+
+Produces `events.pdf`, `jets.pdf`, and `constituents.pdf` in the output directory.
+
+## Bulk generation
+
+Generate multiple HDF5 files in parallel with unique seeds:
+
+```bash
+python scripts/bulk_generate.py --process ttbar -n 100000 --num-files 10 \
+    --parallel 4 -o output/ttbar/
+```
+
+This produces `output/ttbar/ttbar_000.h5` through `ttbar_009.h5`, each with 100k events.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--process` | (required) | Physics process preset |
+| `-o`, `--output-dir` | (required) | Output directory for HDF5 files (staging dir if `--final-dir` is set) |
+| `-n`, `--events-per-file` | (required) | Number of events per file |
+| `--num-files` | (required) | Number of files to generate |
+| `--parallel` | `1` | Number of parallel processes |
+| `--seed-start` | `1` | Starting seed; file *i* gets seed = seed_start + *i* |
+| `--final-dir` | — | Final directory to move completed files to (e.g. HDD) |
+
+Any extra flags are forwarded to `truthjets` (e.g. `--ecm 14000 --pu 60`).
 
 ## Output format
 

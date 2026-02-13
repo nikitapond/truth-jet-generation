@@ -8,7 +8,8 @@ import yaml
 
 @dataclass
 class PythiaConfig:
-    process: str = "qcd"
+    process: str | None = None
+    pythia_card: str | None = None
     ecm: float = 13600.0
     pt_hat_min: float | None = None
     pt_hat_max: float | None = None
@@ -63,7 +64,8 @@ def load_pythia_config(path: str | Path) -> PythiaConfig:
     with open(path) as f:
         data = yaml.safe_load(f)
     return PythiaConfig(
-        process=data.get("process", "qcd"),
+        process=data.get("process"),
+        pythia_card=data.get("pythia_card"),
         ecm=data.get("ecm", 13600.0),
         pt_hat_min=data.get("pt_hat_min"),
         pt_hat_max=data.get("pt_hat_max"),
