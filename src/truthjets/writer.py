@@ -40,18 +40,32 @@ CONSTITUENT_DTYPE = np.dtype(
 class HDF5Writer:
     """Streaming HDF5 writer for ftag-compatible jet output."""
 
-    def __init__(self, path: str, jet_config: JetConfig):
+    def __init__(
+        self,
+        path: str,
+        jet_config: JetConfig,
+        extra_jet_fields: list[tuple[str, np.dtype]] | None = None,
+        extra_datasets: dict | None = None,
+    ):
         self.path = path
         self.max_constituents = jet_config.max_constituents
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.file = h5py.File(path, "w")
+
+        # Build jet dtype with any extra fields
+        if extra_jet_fields:
+            self.jet_dtype = np.dtype(
+                JET_DTYPE.descr + [(name, dt) for name, dt in extra_jet_fields]
+            )
+        else:
+            self.jet_dtype = JET_DTYPE
 
         # Create resizable datasets
         self.jets_ds = self.file.create_dataset(
             "jets",
             shape=(0,),
             maxshape=(None,),
-            dtype=JET_DTYPE,
+            dtype=self.jet_dtype,
             chunks=(1000,),
             compression="gzip",
             compression_opts=7,
@@ -67,6 +81,25 @@ class HDF5Writer:
             compression_opts=7,
             shuffle=True,
         )
+
+        # Create extra datasets from modules
+        self._extra_ds = {}
+        if extra_datasets:
+            for ds_name, schema in extra_datasets.items():
+                shape = (0,) + schema.shape_suffix
+                maxshape = (None,) + schema.shape_suffix
+                chunks = (1000,) + schema.shape_suffix
+                self._extra_ds[ds_name] = self.file.create_dataset(
+                    ds_name,
+                    shape=shape,
+                    maxshape=maxshape,
+                    dtype=schema.dtype,
+                    chunks=chunks,
+                    compression="gzip",
+                    compression_opts=7,
+                    shuffle=True,
+                )
+
         self._n_jets = 0
 
     def write_batch(
@@ -77,6 +110,8 @@ class HDF5Writer:
         jet_eta,
         jet_phi,
         event_offset: int = 0,
+        extra_jet_data: dict | None = None,
+        extra_dataset_data: dict | None = None,
     ):
         """Write a batch of jets and constituents to HDF5.
 
@@ -142,7 +177,7 @@ class HDF5Writer:
         flat_pt_frac_pu = ak.to_numpy(pt_frac_pu).astype(np.float32)
 
         # Build structured jet array
-        jet_array = np.zeros(n_new, dtype=JET_DTYPE)
+        jet_array = np.zeros(n_new, dtype=self.jet_dtype)
         jet_array["event_id"] = flat_event_id
         jet_array["pt"] = flat_pt
         jet_array["eta"] = flat_eta
@@ -153,11 +188,24 @@ class HDF5Writer:
         jet_array["n_constituents"] = flat_nconstit
         jet_array["pt_frac_pu"] = flat_pt_frac_pu
 
+        # Fill extra jet columns from modules
+        if extra_jet_data:
+            for field_name, values in extra_jet_data.items():
+                jet_array[field_name] = values
+
         # Extend datasets
         self.jets_ds.resize(self._n_jets + n_new, axis=0)
         self.constit_ds.resize(self._n_jets + n_new, axis=0)
         self.jets_ds[self._n_jets : self._n_jets + n_new] = jet_array
         self.constit_ds[self._n_jets : self._n_jets + n_new] = constit_array
+
+        # Write extra datasets from modules
+        if extra_dataset_data:
+            for ds_name, data in extra_dataset_data.items():
+                ds = self._extra_ds[ds_name]
+                ds.resize(self._n_jets + n_new, axis=0)
+                ds[self._n_jets : self._n_jets + n_new] = data
+
         self._n_jets += n_new
 
     def _pad_constituents(self, constituents, jet_eta, jet_phi):

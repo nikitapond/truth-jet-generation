@@ -13,6 +13,34 @@ _ALGORITHMS = {
 }
 
 
+def extract_particles(events):
+    """Extract final-state particles from Pythia events.
+
+    Parameters
+    ----------
+    events : ak.Array
+        Batch from pythia.nextBatch() with events.prt fields.
+
+    Returns
+    -------
+    ak.Array
+        Particle arrays (events x particles) with fields
+        {px, py, pz, E, pdgId, is_pu}.
+    """
+    prt = events.prt
+    final = prt[prt.status > 0]
+    return ak.zip(
+        {
+            "px": final.p.px,
+            "py": final.p.py,
+            "pz": final.p.pz,
+            "E": final.p.e,
+            "pdgId": final.id,
+            "is_pu": ak.zeros_like(final.id, dtype=np.bool_),
+        }
+    )
+
+
 def cluster_jets(events, jet_config: JetConfig, particles=None):
     """Cluster jets from a Pythia event batch.
 
@@ -39,19 +67,7 @@ def cluster_jets(events, jet_config: JetConfig, particles=None):
         # Use pre-merged particles (e.g. from pileup overlay)
         fj_particles = particles
     else:
-        # Extract final-state from events and add is_pu=False
-        prt = events.prt
-        final = prt[prt.status > 0]
-        fj_particles = ak.zip(
-            {
-                "px": final.p.px,
-                "py": final.p.py,
-                "pz": final.p.pz,
-                "E": final.p.e,
-                "pdgId": final.id,
-                "is_pu": ak.zeros_like(final.id, dtype=np.bool_),
-            }
-        )
+        fj_particles = extract_particles(events)
 
     # Jet definition
     alg = _ALGORITHMS.get(jet_config.algorithm)
