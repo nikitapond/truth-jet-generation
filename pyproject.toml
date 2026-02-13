@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "truthjets"
+version = "0.1.0"
+description = "Truth-level jet generation for ftag ML training"
+requires-python = ">=3.10"
+dependencies = [
+    "pythia8mc",
+    "fastjet",
+    "awkward>=2.0",
+    "vector",
+    "h5py",
+    "numpy",
+    "matplotlib>=3.10.8",
+    "pyyaml>=6.0.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+truthjets = "truthjets.cli:main"
+plot-events = "truthjets.plotting.events:main"
+plot-jets = "truthjets.plotting.jets:main"
+plot-constituents = "truthjets.plotting.constituents:main"
+plot-all = "truthjets.plotting.all:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/truthjets"]

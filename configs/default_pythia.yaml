@@ -1,0 +1,10 @@
+# Pythia8 event generation settings
+process: qcd          # qcd, ttbar, zprime_tt
+ecm: 13600.0          # Centre-of-mass energy [GeV]
+pt_hat_min: null       # pTHat minimum cut [GeV] (null = no cut)
+pt_hat_max: null       # pTHat maximum cut [GeV] (null = no cut)
+seed: 42
+mu: null              # Mean pileup interactions (null = no pileup, e.g. 40 for <mu>=40)
+
+# Additional Pythia readString commands (optional)
+extra_settings: []

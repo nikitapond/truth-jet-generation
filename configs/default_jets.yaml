@@ -1,0 +1,12 @@
+# Jet clustering and output settings
+jet:
+  algorithm: antikt     # antikt, kt, cambridge
+  R: 0.4                # Jet radius parameter
+  pt_min: 20.0          # Minimum jet pT [GeV]
+  eta_max: 2.5          # Maximum jet |eta|
+  max_constituents: 80  # Constituents per jet (zero-padded)
+
+output:
+  path: jets.h5
+  n_events: 100000
+  batch_size: 10000
