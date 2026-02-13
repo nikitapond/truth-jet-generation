@@ -11,14 +11,17 @@ def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
     """Create and initialize a Pythia instance from config."""
     pythia = pythia8mc.Pythia("", False)
 
-    # Apply process preset
-    if config.process not in PROCESS_PRESETS:
-        raise ValueError(
-            f"Unknown process '{config.process}'. "
-            f"Available: {list(PROCESS_PRESETS)}"
-        )
-    for setting in PROCESS_PRESETS[config.process]:
-        pythia.readString(setting)
+    # Apply process settings from card file or preset
+    if config.pythia_card is not None:
+        pythia.readFile(config.pythia_card)
+    else:
+        if config.process not in PROCESS_PRESETS:
+            raise ValueError(
+                f"Unknown process '{config.process}'. "
+                f"Available: {list(PROCESS_PRESETS)}"
+            )
+        for setting in PROCESS_PRESETS[config.process]:
+            pythia.readString(setting)
 
     # Beam settings
     pythia.readString(f"Beams:eCM = {config.ecm}")

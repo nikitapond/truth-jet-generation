@@ -1,3 +1,6 @@
 .venv
-.claude
+.claude/*
+!.claude/skills/
 **/*.pyc
+*.h5
+*.pdf
