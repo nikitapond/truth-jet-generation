@@ -18,6 +18,10 @@ truthjets --process qcd -n 1000000 -o qcd.h5
 truthjets --process zprime_tt -n 100000 -o zprime.h5
 truthjets --pythia-card my_process.cmnd -n 100000 -o custom.h5
 
+# Large-R jets (auto-loads LargeRLabelModule for W/Z/H/top labeling)
+truthjets --pythia-card cards/z_qq.cmnd -R 1.0 -n 100000 -o z_jets.h5
+truthjets --pythia-card cards/zh_llbb.cmnd -R 1.0 -n 100000 -o zh_jets.h5
+
 # Run all tests
 pytest tests/
 
@@ -49,7 +53,8 @@ Modules hook into the event processing pipeline at two points: before jet cluste
 
 ### Built-in modules
 
-- **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`label_module.py`). Auto-loaded for R=0.4 jets. For non-0.4R jets, no labeling runs by default.
+- **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`label_module.py`). Auto-loaded for R=0.4 jets.
+- **`LargeRLabelModule`** — dR-matched W/Z/H/top labeling (`label_module.py`). Auto-loaded for R > 0.4 jets. Labels: 0=QCD, 6=top, 23=Z, 24=W, 25=Higgs (PDG IDs). Priority: top > H > Z > W.
 
 ### Using modules
 
@@ -90,6 +95,13 @@ class MyModule(TruthJetModule):
 - `post_clustering(events, jets, constituents, jet_kin, labels)` — return `ModuleResult` or None
 - `extra_jet_fields()` — declare extra `/jets` columns as `[(name, dtype), ...]`
 - `extra_datasets()` — declare extra HDF5 datasets as `{name: DatasetSchema(dtype, shape_suffix)}`
+
+## Pythia Cards
+
+Pre-built Pythia configuration cards live in `cards/`:
+
+- **`cards/z_qq.cmnd`** — Boosted Z+jets with Z → qq (hadronic). `pTHatMin = 200`.
+- **`cards/zh_llbb.cmnd`** — ZH associated production with H → bb, Z → ll. `pTHatMin = 150`.
 
 ## HDF5 Output Format
 

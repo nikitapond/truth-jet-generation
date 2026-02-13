@@ -1,0 +1,13 @@
+! Boosted Z+jets with Z -> qq (hadronic)
+! Suitable for large-R jet studies
+
+! Z + parton processes
+WeakBosonAndParton:qqbar2gmZg = on
+WeakBosonAndParton:qg2gmZq = on
+
+! Force Z to quarks (hadronic decay)
+23:onMode = off
+23:onIfAny = 1 2 3 4 5
+
+! Phase space: boosted regime
+PhaseSpace:pTHatMin = 200.0

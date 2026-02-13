@@ -16,7 +16,7 @@ from truthjets.config import (
     load_pythia_config,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
-from truthjets.label_module import HadronConeExclLabelModule
+from truthjets.label_module import HadronConeExclLabelModule, LargeRLabelModule
 from truthjets.modules import load_module, validate_modules
 from truthjets.pileup import (
     generate_pileup_pool,
@@ -248,9 +248,11 @@ def main(argv=None):
     # Load and initialize pipeline modules
     modules = []
 
-    # Auto-add HadronConeExcl labeling for R=0.4 jets
+    # Auto-add labeling module based on jet radius
     if jet_config.R == 0.4:
         modules.append(HadronConeExclLabelModule())
+    elif jet_config.R > 0.4:
+        modules.append(LargeRLabelModule())
 
     for module_path in args.module:
         mod = load_module(module_path)
