@@ -22,6 +22,12 @@ truthjets --pythia-card my_process.cmnd -n 100000 -o custom.h5
 truthjets --pythia-card cards/z_qq.cmnd -R 1.0 -n 100000 -o z_jets.h5
 truthjets --pythia-card cards/zh_llbb.cmnd -R 1.0 -n 100000 -o zh_jets.h5
 
+# Generate a pileup pool for later reuse
+generate-pu-pool -n 100000 -o pu_pool.h5
+
+# Use it with hard-scatter generation
+truthjets --process ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
+
 # Run all tests
 pytest tests/
 
