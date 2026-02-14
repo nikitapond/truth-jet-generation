@@ -23,6 +23,7 @@ dev = ["pytest"]
 
 [project.scripts]
 truthjets = "truthjets.cli:main"
+bulk-generate = "truthjets.bulk_generate:main"
 plot-events = "truthjets.plotting.events:main"
 plot-jets = "truthjets.plotting.jets:main"
 plot-constituents = "truthjets.plotting.constituents:main"
