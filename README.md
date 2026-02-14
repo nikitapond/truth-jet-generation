@@ -137,7 +137,7 @@ Produces `events.pdf`, `jets.pdf`, and `constituents.pdf` in the output director
 
 ## Pileup pool generation
 
-Pre-generate a pool of min-bias events for reuse across multiple hard-scatter runs. This avoids re-running Pythia for pileup each time:
+Pre-generate a pool of min-bias events for reuse across multiple hard-scatter runs. This avoids re-running Pythia for pileup each time. Pool files are saved with gzip-7 compression.
 
 ```bash
 # Generate a pool of 100k min-bias events
@@ -154,6 +154,20 @@ truthjets --process ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
 | `--ecm` | `13600` | Centre-of-mass energy [GeV] |
 | `--seed` | `42` | Random seed |
 | `--batch-size` | `10000` | Events per Pythia batch |
+
+### Loading pool chunks from a directory
+
+`--pu-file` accepts either a single HDF5 file or a directory of pool chunks. When given a directory, all `*.h5` files inside are loaded (sorted by filename) and concatenated into one pool. This is useful for large-scale production where pool generation is split across batch jobs (e.g. HTCondor on lxplus):
+
+```bash
+# Each batch job produces a chunk
+generate-pu-pool -n 1000000 --seed 1 -o pool_chunks/chunk_000.h5
+generate-pu-pool -n 1000000 --seed 2 -o pool_chunks/chunk_001.h5
+# ...
+
+# Point at the directory — all chunks are loaded and merged
+truthjets --process ttbar -n 100000 --pu 50 --pu-file pool_chunks/ -o ttbar_pu.h5
+```
 
 ## Bulk generation
 
@@ -210,6 +224,25 @@ output/ttbar/          # or --final-dir if set
 ```
 
 The VDS uses relative paths, so the entire output directory can be moved or renamed. Only successful jobs are included.
+
+## Creating Virtual Datasets (`create-vds`)
+
+Standalone CLI for creating HDF5 Virtual Datasets from any set of HDF5 files (pool chunks, jet files, etc.):
+
+```bash
+# From explicit files
+create-vds part_000.h5 part_001.h5 part_002.h5 -o combined.h5
+
+# From a directory (all *.h5 files inside, sorted by name)
+create-vds /path/to/parts/ -o combined.h5
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `inputs` | (required) | Input HDF5 files, or a single directory containing `*.h5` files |
+| `-o`, `--output` | (required) | Output VDS file path |
+
+The VDS uses relative paths for portability. All datasets found in the input files are concatenated along axis 0, with per-dataset size tracking (so files where different datasets have different axis-0 sizes, like pileup pools, are handled correctly).
 
 ## Output format
 
