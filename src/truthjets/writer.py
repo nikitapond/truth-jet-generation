@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 
 from truthjets.config import JetConfig
+from truthjets.h5utils import H5_COMPRESSION
 
 # Structured dtype for the /jets dataset
 JET_DTYPE = np.dtype(
@@ -67,9 +68,7 @@ class HDF5Writer:
             maxshape=(None,),
             dtype=self.jet_dtype,
             chunks=(1000,),
-            compression="gzip",
-            compression_opts=7,
-            shuffle=True,
+            **H5_COMPRESSION,
         )
         self.constit_ds = self.file.create_dataset(
             "constituents",
@@ -77,9 +76,7 @@ class HDF5Writer:
             maxshape=(None, self.max_constituents),
             dtype=CONSTITUENT_DTYPE,
             chunks=(1000, self.max_constituents),
-            compression="gzip",
-            compression_opts=7,
-            shuffle=True,
+            **H5_COMPRESSION,
         )
 
         # Create extra datasets from modules
@@ -95,9 +92,7 @@ class HDF5Writer:
                     maxshape=maxshape,
                     dtype=schema.dtype,
                     chunks=chunks,
-                    compression="gzip",
-                    compression_opts=7,
-                    shuffle=True,
+                    **H5_COMPRESSION,
                 )
 
         self._n_jets = 0

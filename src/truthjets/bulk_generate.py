@@ -18,7 +18,7 @@ import time
 from multiprocessing import Pool
 from pathlib import Path
 
-import h5py
+from truthjets.h5utils import create_vds
 
 
 def run_job(job: dict) -> dict:
@@ -60,53 +60,6 @@ def run_job(job: dict) -> dict:
         "stderr": result.stderr.strip(),
         "elapsed": elapsed,
     }
-
-
-def create_vds(part_files: list[Path], output_path: Path) -> None:
-    """Create an HDF5 Virtual Dataset that concatenates all part files.
-
-    Discovers datasets from the first part file, so it works with any
-    modules/schemas. Uses relative paths so the output directory is portable.
-    """
-    # Discover datasets and collect shapes from all parts
-    with h5py.File(part_files[0], "r") as f:
-        dataset_info = {}
-        for name in f:
-            ds = f[name]
-            dataset_info[name] = {
-                "dtype": ds.dtype,
-                "shape_suffix": ds.shape[1:],  # everything after axis 0
-            }
-
-    # Collect axis-0 sizes from each part
-    sizes = []
-    for pf in part_files:
-        with h5py.File(pf, "r") as f:
-            first_ds = next(iter(f))
-            sizes.append(f[first_ds].shape[0])
-
-    # Build virtual layouts and write
-    rel_parts = [pf.relative_to(output_path.parent) for pf in part_files]
-
-    with h5py.File(output_path, "w") as out:
-        for ds_name, info in dataset_info.items():
-            total = sum(sizes)
-            full_shape = (total, *info["shape_suffix"])
-            layout = h5py.VirtualLayout(shape=full_shape, dtype=info["dtype"])
-
-            offset = 0
-            for rel_path, size in zip(rel_parts, sizes):
-                src = h5py.VirtualSource(
-                    str(rel_path), ds_name,
-                    shape=(size, *info["shape_suffix"]),
-                    dtype=info["dtype"],
-                )
-                layout[offset:offset + size] = src
-                offset += size
-
-            out.create_virtual_dataset(ds_name, layout)
-
-    print(f"Created VDS: {output_path} ({len(part_files)} files, {sum(sizes)} total entries)")
 
 
 def main():

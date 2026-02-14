@@ -25,6 +25,7 @@ dev = ["pytest", "scipy"]
 truthjets = "truthjets.cli:main"
 bulk-generate = "truthjets.bulk_generate:main"
 generate-pu-pool = "truthjets.generate_pu_pool:main"
+create-vds = "truthjets.h5utils:main"
 plot-events = "truthjets.plotting.events:main"
 plot-jets = "truthjets.plotting.jets:main"
 plot-constituents = "truthjets.plotting.constituents:main"

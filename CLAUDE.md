@@ -25,8 +25,13 @@ truthjets --pythia-card cards/zh_llbb.cmnd -R 1.0 -n 100000 -o zh_jets.h5
 # Generate a pileup pool for later reuse
 generate-pu-pool -n 100000 -o pu_pool.h5
 
-# Use it with hard-scatter generation
+# Use it with hard-scatter generation (accepts a file or directory of pool chunks)
 truthjets --process ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
+truthjets --process ttbar -n 100000 --pu 50 --pu-file /path/to/pool_chunks/ -o ttbar_pu.h5
+
+# Create a Virtual Dataset from multiple HDF5 files
+create-vds part_000.h5 part_001.h5 part_002.h5 -o combined.h5
+create-vds /path/to/parts/ -o combined.h5
 
 # Run all tests
 pytest tests/
@@ -52,6 +57,7 @@ All source lives in `src/truthjets/`:
 - **`modules/`** — Pipeline module package. `TruthJetModule` base class with `pre_clustering`/`post_clustering` hooks. `ModuleResult` and `DatasetSchema` dataclasses. `load_module()` and `validate_modules()`.
   - **`modules/label.py`** — Built-in `HadronConeExclLabelModule` (b/c/tau labeling) and `LargeRLabelModule` (W/Z/H/top labeling).
   - **`modules/bb_opening_angle.py`** — `BBOpeningAngleModule` for computing dR between b-hadron pairs in large-R jets.
+- **`h5utils.py`** — Shared HDF5 utilities. `H5_COMPRESSION` dict (gzip-7 + shuffle) used by all dataset creation. `create_vds()` builds HDF5 Virtual Datasets from part files. Also provides the `create-vds` CLI entry point.
 - **`writer.py`** — `HDF5Writer` with resizable/chunked datasets. Pads constituents to `max_constituents` (default 80), sorts by pT descending, computes relative coordinates (deta, dphi). Supports extra jet fields and datasets from modules.
 
 ## Pipeline Modules

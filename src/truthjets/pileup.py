@@ -6,6 +6,8 @@ import awkward as ak
 import h5py
 import numpy as np
 
+from truthjets.h5utils import H5_COMPRESSION
+
 
 def sample_n_pileup(mu: float, n_events: int, rng: np.random.Generator) -> np.ndarray:
     """Sample the number of pileup interactions per event from Poisson(mu).
@@ -192,16 +194,34 @@ def save_pileup_pool(pool: ak.Array, path: str | Path) -> None:
 
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with h5py.File(path, "w") as f:
-        f.create_dataset("n_particles", data=n_particles)
-        f.create_dataset("px", data=px_flat)
-        f.create_dataset("py", data=py_flat)
-        f.create_dataset("pz", data=pz_flat)
-        f.create_dataset("E", data=e_flat)
-        f.create_dataset("pdgId", data=pdgid_flat)
+        f.create_dataset("n_particles", data=n_particles, **H5_COMPRESSION)
+        f.create_dataset("px", data=px_flat, **H5_COMPRESSION)
+        f.create_dataset("py", data=py_flat, **H5_COMPRESSION)
+        f.create_dataset("pz", data=pz_flat, **H5_COMPRESSION)
+        f.create_dataset("E", data=e_flat, **H5_COMPRESSION)
+        f.create_dataset("pdgId", data=pdgid_flat, **H5_COMPRESSION)
 
 
 def load_pileup_pool(path: str | Path) -> ak.Array:
-    """Load a pileup pool from HDF5, reconstructing the ragged awkward array."""
+    """Load a pileup pool from HDF5, reconstructing the ragged awkward array.
+
+    If *path* is a directory, all ``*.h5`` files inside it are loaded and
+    concatenated (sorted by filename) into a single pool.
+    """
+    path = Path(path)
+
+    if path.is_dir():
+        pool_files = sorted(path.glob("*.h5"))
+        if not pool_files:
+            raise FileNotFoundError(f"No .h5 files found in {path}")
+        pools = [_load_single_pool(pf) for pf in pool_files]
+        return ak.concatenate(pools, axis=0)
+
+    return _load_single_pool(path)
+
+
+def _load_single_pool(path: Path) -> ak.Array:
+    """Load a single pileup pool HDF5 file."""
     with h5py.File(path, "r") as f:
         n_particles = f["n_particles"][:]
         px_flat = f["px"][:]
