@@ -244,6 +244,55 @@ create-vds /path/to/parts/ -o combined.h5
 
 The VDS uses relative paths for portability. All datasets found in the input files are concatenated along axis 0, with per-dataset size tracking (so files where different datasets have different axis-0 sizes, like pileup pools, are handled correctly).
 
+## Batch production on lxplus (HTCondor)
+
+For large-scale pileup pool generation on CERN's lxplus cluster, HTCondor submit scripts are provided in `condor/`.
+
+### Setup
+
+1. Install the package into a venv on EOS (accessible from worker nodes):
+
+```bash
+# On lxplus
+cd /eos/user/j/jabarr/
+git clone https://github.com/nikitapond/truth-jet-generation.git
+cd truth-jet-generation
+git checkout feature/h5utils-compression-directory-loading
+uv venv && source .venv/bin/activate && uv pip install -e .
+```
+
+2. Edit `condor/generate_pu_pool.sub` to set your paths and parameters:
+
+```
+venv_path  = /eos/user/j/jabarr/truth-jet-generation/.venv
+output_dir = /eos/user/j/jabarr/pu_pools/13p6TeV
+n_events   = 100000
+n_jobs     = 100
+seed_start = 1
+ecm        = 13600.0
+batch_size = 10000
+```
+
+3. Submit:
+
+```bash
+cd condor
+mkdir -p logs
+condor_submit generate_pu_pool.sub
+```
+
+4. After all jobs complete, use the output directory directly or create a VDS:
+
+```bash
+# Use directory of chunks directly
+truthjets --process ttbar -n 100000 --pu 50 --pu-file /eos/user/j/jabarr/pu_pools/13p6TeV/ -o ttbar_pu.h5
+
+# Or create a virtual dataset
+create-vds /eos/user/j/jabarr/pu_pools/13p6TeV/ -o pu_pool.h5
+```
+
+Each job produces `chunk_XXXX.h5` (named by seed). The `+JobFlavour` in the submit file controls the max wall time — `"longlunch"` gives 2 hours, which is sufficient for ~100k events per job.
+
 ## Output format
 
 The HDF5 file contains two datasets:

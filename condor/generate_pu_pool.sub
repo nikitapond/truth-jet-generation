@@ -1,0 +1,40 @@
+# HTCondor submit file for pileup pool generation
+# Submit with: condor_submit condor/generate_pu_pool.sub
+#
+# Each job produces one pool chunk. After all jobs complete, use the output
+# directory directly:
+#   truthjets --process ttbar -n 100000 --pu 50 --pu-file $(output_dir) -o out.h5
+# Or create a virtual dataset:
+#   create-vds $(output_dir) -o pu_pool_vds.h5
+
+# ============================================================
+# User configuration — edit these before submitting
+# ============================================================
+venv_path  = /eos/user/j/jabarr/truth-jet-generation/.venv
+output_dir = /eos/user/j/jabarr/pileup
+n_events   = 100000
+n_jobs     = 100
+seed_start = 1
+ecm        = 13600.0
+batch_size = 10000
+# ============================================================
+
+executable = generate_pu_pool.sh
+arguments  = $(venv_path) $(output_dir) $(n_events) $INT(seed) $(ecm) $(batch_size)
+
+output = logs/pu_pool_$(ClusterId)_$(ProcId).out
+error  = logs/pu_pool_$(ClusterId)_$(ProcId).err
+log    = logs/pu_pool_$(ClusterId).log
+
+# Job flavour (max wall time): espresso=20min, microcentury=1h,
+# longlunch=2h, workday=8h, tomorrow=1d, testmatch=3d
++JobFlavour = "longlunch"
+
+# Request resources (adjust based on n_events and batch_size)
+request_cpus   = 1
+request_memory = 2 GB
+request_disk   = 1 GB
+
+seed = $INT(seed_start) + $(ProcId)
+
+queue $(n_jobs)

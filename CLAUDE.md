@@ -110,6 +110,13 @@ class MyModule(TruthJetModule):
 - `extra_jet_fields()` — declare extra `/jets` columns as `[(name, dtype), ...]`
 - `extra_datasets()` — declare extra HDF5 datasets as `{name: DatasetSchema(dtype, shape_suffix)}`
 
+## HTCondor Scripts
+
+Batch submission scripts for lxplus live in `condor/`:
+
+- **`condor/generate_pu_pool.sh`** — Wrapper script sourcing the venv and running `generate-pu-pool` with per-job seed.
+- **`condor/generate_pu_pool.sub`** — HTCondor submit file with configurable venv path, output dir, event count, seed range, ecm, and batch size. Uses `queue N` for parametric jobs.
+
 ## Pythia Cards
 
 Pre-built Pythia configuration cards live in `cards/`:
