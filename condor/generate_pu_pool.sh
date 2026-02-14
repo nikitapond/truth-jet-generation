@@ -10,6 +10,8 @@ SEED="$4"
 ECM="$5"
 BATCH_SIZE="$6"
 
+# Source LCG view for Python 3.11+ and system libraries
+source /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/setup.sh
 source "${VENV_PATH}/bin/activate"
 
 OUTFILE="${OUTPUT_DIR}/chunk_$(printf '%04d' "${SEED}").h5"
