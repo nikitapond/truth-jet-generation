@@ -3,7 +3,7 @@ from __future__ import annotations
 import awkward as ak
 import numpy as np
 
-from truthjets.label_module import label_large_r_jets
+from truthjets.modules.label import label_large_r_jets
 
 
 class TestLargeRLabelJets:

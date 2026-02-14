@@ -38,6 +38,61 @@ def is_tau_lepton(pdg_id):
     return np.abs(pdg_id) == 15
 
 
+def final_b_hadron_mask(particles):
+    """Return a boolean mask selecting only weakly-decaying b-hadrons.
+
+    A b-hadron is "final" (weakly decaying) if none of its daughters
+    in the Pythia event record are also b-hadrons. This filters out
+    excited states (B**, B*) that decay via strong/EM interactions
+    to ground-state B mesons.
+
+    Parameters
+    ----------
+    particles : ak.Array
+        Pythia particle record (events x particles) with fields
+        ``id``, ``daughter1``, ``daughter2``.
+
+    Returns
+    -------
+    mask : ak.Array
+        Boolean mask (events x particles), True for weakly-decaying b-hadrons.
+    """
+    prt_id = particles.id
+    d1 = particles.daughter1
+    d2 = particles.daughter2
+
+    b_flag = is_b_hadron(prt_id)
+
+    # Flatten to numpy for efficient prefix-sum computation
+    counts = ak.num(prt_id)
+    counts_np = ak.to_numpy(counts)
+    global_offsets = np.concatenate([[0], np.cumsum(counts_np)])
+
+    flat_b = ak.to_numpy(ak.flatten(b_flag)).astype(np.int32)
+    flat_cumsum = np.concatenate([[0], np.cumsum(flat_b)])
+
+    flat_d1 = ak.to_numpy(ak.flatten(d1))
+    flat_d2 = ak.to_numpy(ak.flatten(d2))
+
+    # Convert local (per-event) indices to global flat indices
+    event_idx = np.repeat(np.arange(len(counts_np)), counts_np)
+    global_d1 = flat_d1 + global_offsets[event_idx]
+    global_d2 = flat_d2 + global_offsets[event_idx]
+
+    # Particles with d1==0 have no daughters in Pythia convention
+    has_daughters = flat_d1 > 0
+
+    # Count b-hadron daughters via prefix sum: sum(b_flag[d1:d2+1])
+    safe_d1 = np.where(has_daughters, global_d1, 0)
+    safe_d2 = np.where(has_daughters, global_d2, 0)
+    n_b_daughters = flat_cumsum[safe_d2 + 1] - flat_cumsum[safe_d1]
+    n_b_daughters = np.where(has_daughters, n_b_daughters, 0)
+
+    flat_is_final_b = ak.to_numpy(ak.flatten(b_flag)) & (n_b_daughters == 0)
+
+    return ak.unflatten(flat_is_final_b, counts)
+
+
 def _delta_phi(phi1, phi2):
     """Compute delta-phi, wrapped to [-pi, pi]."""
     dphi = phi1 - phi2
