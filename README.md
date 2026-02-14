@@ -140,23 +140,56 @@ Produces `events.pdf`, `jets.pdf`, and `constituents.pdf` in the output director
 Generate multiple HDF5 files in parallel with unique seeds:
 
 ```bash
-python scripts/bulk_generate.py --process ttbar -n 100000 --num-files 10 \
+# Using a process preset
+bulk-generate --process ttbar -n 100000 --num-files 10 \
     --parallel 4 -o output/ttbar/
+
+# Using a Pythia card
+bulk-generate --pythia-card cards/z_qq.cmnd -n 100000 --num-files 10 \
+    --parallel 4 -R 1.0 -o output/z_qq/
 ```
 
-This produces `output/ttbar/ttbar_000.h5` through `ttbar_009.h5`, each with 100k events.
+This produces `output/ttbar/ttbar_000.h5` through `ttbar_009.h5`, each with 100k events. With `--pythia-card`, the card filename stem is used as the prefix (e.g. `z_qq_000.h5`).
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--process` | (required) | Physics process preset |
+| `--process` | — | Physics process preset (exactly one of `--process` or `--pythia-card` required) |
+| `--pythia-card` | — | Path to a Pythia command file (`.cmnd`) |
+| `--prefix` | — | File name prefix (default: process name or card stem) |
 | `-o`, `--output-dir` | (required) | Output directory for HDF5 files (staging dir if `--final-dir` is set) |
 | `-n`, `--events-per-file` | (required) | Number of events per file |
 | `--num-files` | (required) | Number of files to generate |
 | `--parallel` | `1` | Number of parallel processes |
 | `--seed-start` | `1` | Starting seed; file *i* gets seed = seed_start + *i* |
 | `--final-dir` | — | Final directory to move completed files to (e.g. HDD) |
+| `--vds` | off | Create an HDF5 Virtual Dataset concatenating all part files |
 
-Any extra flags are forwarded to `truthjets` (e.g. `--ecm 14000 --pu 60`).
+Any extra flags are forwarded to `truthjets` (e.g. `--ecm 14000 -R 1.0 --pu 60`).
+
+### Virtual Dataset (`--vds`)
+
+The `--vds` flag creates a single `vds.h5` that virtually concatenates all part files without copying data, so you can treat the output as one file for plotting and analysis.
+
+```bash
+# Parts and VDS in the same directory
+bulk-generate --process ttbar -n 100000 --num-files 10 --vds -o output/ttbar/
+
+# With staging on SSD, final output on HDD
+bulk-generate --process ttbar -n 100000 --num-files 10 --vds \
+    -o /fast-ssd/staging/ --final-dir /large-hdd/ttbar/
+```
+
+Output structure:
+```
+output/ttbar/          # or --final-dir if set
+├── parts/
+│   ├── ttbar_000.h5
+│   ├── ttbar_001.h5
+│   └── ...
+└── vds.h5             ← virtual dataset (references parts/ via relative paths)
+```
+
+The VDS uses relative paths, so the entire output directory can be moved or renamed. Only successful jobs are included.
 
 ## Output format
 
