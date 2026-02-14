@@ -253,19 +253,19 @@ For large-scale pileup pool generation on CERN's lxplus cluster, HTCondor submit
 1. Install the package into a venv on EOS (accessible from worker nodes):
 
 ```bash
-# On lxplus
-cd /eos/user/j/jabarr/
+# On lxplus (install in AFS home, outputs go to EOS)
+cd ~
 git clone https://github.com/nikitapond/truth-jet-generation.git
 cd truth-jet-generation
 git checkout feature/h5utils-compression-directory-loading
-uv venv && source .venv/bin/activate && uv pip install -e .
+python3 -m venv .venv && source .venv/bin/activate && pip install -e .
 ```
 
 2. Edit `condor/generate_pu_pool.sub` to set your paths and parameters:
 
 ```
-venv_path  = /eos/user/j/jabarr/truth-jet-generation/.venv
-output_dir = /eos/user/j/jabarr/pu_pools/13p6TeV
+venv_path  = /afs/cern.ch/user/j/jabarr/truth-jet-generation/.venv
+output_dir = /eos/user/j/jabarr/pileup
 n_events   = 100000
 n_jobs     = 100
 seed_start = 1

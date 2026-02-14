@@ -10,7 +10,7 @@
 # ============================================================
 # User configuration — edit these before submitting
 # ============================================================
-venv_path  = /eos/user/j/jabarr/truth-jet-generation/.venv
+venv_path  = /afs/cern.ch/user/j/jabarr/truth-jet-generation/.venv
 output_dir = /eos/user/j/jabarr/pileup
 n_events   = 100000
 n_jobs     = 100
