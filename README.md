@@ -135,6 +135,26 @@ python scripts/plot_all.py <input.h5> [-o plots/]
 
 Produces `events.pdf`, `jets.pdf`, and `constituents.pdf` in the output directory.
 
+## Pileup pool generation
+
+Pre-generate a pool of min-bias events for reuse across multiple hard-scatter runs. This avoids re-running Pythia for pileup each time:
+
+```bash
+# Generate a pool of 100k min-bias events
+generate-pu-pool -n 100000 -o pu_pool.h5
+
+# Use it with hard-scatter generation
+truthjets --process ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-n`, `--n-events` | (required) | Number of min-bias events to generate |
+| `-o`, `--output` | (required) | Output HDF5 file path |
+| `--ecm` | `13600` | Centre-of-mass energy [GeV] |
+| `--seed` | `42` | Random seed |
+| `--batch-size` | `10000` | Events per Pythia batch |
+
 ## Bulk generation
 
 Generate multiple HDF5 files in parallel with unique seeds:
