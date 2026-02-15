@@ -9,7 +9,7 @@ TruthJets generates truth-level jet training data for ATLAS flavor-tagging ML mo
 ## Commands
 
 ```bash
-# Setup environment
+# Setup environment (ALWAYS use [dev] to include pytest and other dev tools)
 uv venv && source .venv/bin/activate && uv pip install -e ".[dev]"
 
 # Generate events (exactly one of --process or --pythia-card is required)
@@ -33,11 +33,17 @@ truthjets --process ttbar -n 100000 --pu 50 --pu-file /path/to/pool_chunks/ -o t
 create-vds part_000.h5 part_001.h5 part_002.h5 -o combined.h5
 create-vds /path/to/parts/ -o combined.h5
 
-# Run all tests
-pytest tests/
+# Run all tests (use .venv/bin/pytest if venv is not activated)
+.venv/bin/pytest tests/
 
 # Run a single test file
-pytest tests/test_label.py
+.venv/bin/pytest tests/test_label.py
+
+# Run tests with coverage
+.venv/bin/pytest tests/ --cov=truthjets --cov-report=term-missing
+
+# NOTE: If pytest is missing, you likely installed without [dev].
+# Fix with: uv pip install -e ".[dev]"
 
 # Plot output
 python scripts/plot_jets.py output.h5 -o plots.pdf
@@ -121,6 +127,33 @@ Pre-built Pythia configuration cards live in `cards/`:
 
 - `/jets` — structured array: `pt`, `eta`, `phi`, `mass`, `energy` (float32), `HadronConeExclTruthLabelID` (int32), `n_constituents` (int32)
 - `/constituents` — shape [n_jets, max_constituents]: `pt`, `deta`, `dphi`, `energy` (float32), `pdgId` (int32), `valid` (bool)
+
+## Bulk Generation Best Practices
+
+When using `bulk-generate`, always use `--vds` to get a clean output structure with a virtual dataset:
+
+```bash
+bulk-generate --process ttbar -n 12500 --num-files 8 --parallel 4 --vds \
+    -o /path/to/output/
+```
+
+This creates `parts/ttbar_*.h5` plus a `vds.h5` that presents all parts as a single concatenated dataset — much easier to work with downstream.
+
+For pileup runs, pre-generate the PU pool to save memory and time (allows more parallel workers):
+
+```bash
+# 1. Generate PU pool once
+truthjets --process ttbar -n 1 --pu 60 --pu-pre-gen 20000 --batch-size 1 -o /tmp/dummy.h5
+# Pool saved as dummy_20000_pu_events.h5 in cwd
+
+# 2. Use pool for bulk generation
+bulk-generate --process ttbar --pu 60 --softkiller \
+    --pu-file pu_pool_20k.h5 \
+    -n 12500 --num-files 8 --parallel 4 --vds \
+    -o /path/to/output/
+```
+
+Memory note: without a pre-generated pool, each worker generates its own PU events in memory (~7 GB at mu=60). On a 16 GB machine, limit `--parallel` to 1-2 without a pool, or 4+ with a pool.
 
 ## Key Dependencies
 

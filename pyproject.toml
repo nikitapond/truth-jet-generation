@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "scipy"]
+dev = ["pytest", "pytest-cov", "scipy"]
 
 [project.scripts]
 truthjets = "truthjets.cli:main"
