@@ -3,6 +3,8 @@ from __future__ import annotations
 import awkward as ak
 import numpy as np
 
+from truthjets.cluster import safe_eta
+
 
 def is_b_hadron(pdg_id):
     """Vectorized check for b-hadrons based on PDG ID convention.
@@ -133,9 +135,7 @@ def label_jets(events, jet_eta, jet_phi, R):
     py = particles.p.py
     pz = particles.p.pz
     p_mag = np.sqrt(px**2 + py**2 + pz**2)
-    prt_eta = np.arctanh(
-        ak.where(p_mag > 0, pz / ak.where(p_mag > 0, p_mag, 1.0), 0.0)
-    )
+    prt_eta = safe_eta(pz, p_mag)
     prt_phi = np.arctan2(py, px)
     prt_id = particles.id
 

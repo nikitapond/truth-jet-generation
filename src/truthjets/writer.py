@@ -6,6 +6,7 @@ import awkward as ak
 import h5py
 import numpy as np
 
+from truthjets.cluster import safe_eta
 from truthjets.config import JetConfig
 from truthjets.h5utils import H5_COMPRESSION
 
@@ -253,9 +254,7 @@ class HDF5Writer:
 
         # Compute eta, phi for constituents
         c_p = np.sqrt(c_px**2 + c_py**2 + c_pz**2)
-        c_eta = np.arctanh(
-            ak.where(c_p > 0, c_pz / ak.where(c_p > 0, c_p, 1.0), 0.0)
-        )
+        c_eta = safe_eta(c_pz, c_p)
         c_phi = np.arctan2(c_py, c_px)
 
         # Compute deta, dphi relative to jet axis

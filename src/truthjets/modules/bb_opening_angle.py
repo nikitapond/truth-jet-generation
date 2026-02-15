@@ -3,6 +3,7 @@ from __future__ import annotations
 import awkward as ak
 import numpy as np
 
+from truthjets.cluster import safe_eta
 from truthjets.config import JetConfig
 from truthjets.label import final_b_hadron_mask
 from truthjets.modules import ModuleResult, TruthJetModule
@@ -48,9 +49,7 @@ class BBOpeningAngleModule(TruthJetModule):
         py = particles.p.py
         pz = particles.p.pz
         p_mag = np.sqrt(px**2 + py**2 + pz**2)
-        prt_eta = np.arctanh(
-            ak.where(p_mag > 0, pz / ak.where(p_mag > 0, p_mag, 1.0), 0.0)
-        )
+        prt_eta = safe_eta(pz, p_mag)
         prt_phi = np.arctan2(py, px)
         prt_id = particles.id
 

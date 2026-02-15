@@ -6,6 +6,17 @@ import numpy as np
 
 from truthjets.config import JetConfig
 
+# Largest safe argument to arctanh (avoids inf at ±1)
+_ARCTANH_CLAMP = 1.0 - 1e-10
+
+
+def safe_eta(pz, p):
+    """Compute pseudorapidity, clamping arctanh argument to avoid divergence at |pz|==p."""
+    cos_theta = ak.where(p > 0, pz / ak.where(p > 0, p, 1.0), 0.0)
+    clamped = ak.where(cos_theta > _ARCTANH_CLAMP, _ARCTANH_CLAMP,
+              ak.where(cos_theta < -_ARCTANH_CLAMP, -_ARCTANH_CLAMP, cos_theta))
+    return np.arctanh(clamped)
+
 _ALGORITHMS = {
     "antikt": fastjet.antikt_algorithm,
     "kt": fastjet.kt_algorithm,
@@ -114,7 +125,7 @@ def compute_jet_kinematics(jets):
 
     pt = np.sqrt(px**2 + py**2)
     p = np.sqrt(px**2 + py**2 + pz**2)
-    eta = np.arctanh(ak.where(p > 0, pz / ak.where(p > 0, p, 1.0), 0.0))
+    eta = safe_eta(pz, p)
     phi = np.arctan2(py, px)
     mass_sq = E**2 - px**2 - py**2 - pz**2
     mass = np.sqrt(ak.where(mass_sq > 0, mass_sq, 0.0))
