@@ -16,10 +16,15 @@ from truthjets.config import (
     load_pythia_config,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
+from truthjets.benchmark import Benchmark
 from truthjets.modules import (
     HadronConeExclLabelModule,
     LargeRLabelModule,
+    SoftKillerModule,
+    VertexZFilterModule,
+    deduplicate_modules,
     load_module,
+    resolve_module_specs,
     validate_modules,
 )
 from truthjets.pileup import (
@@ -30,7 +35,6 @@ from truthjets.pileup import (
     sample_n_pileup,
     save_pileup_pool,
 )
-from truthjets.pileup_rejection import softkiller, vertex_z_filter
 from truthjets.writer import HDF5Writer
 
 
@@ -140,6 +144,24 @@ def parse_args(argv=None):
             "Pipeline module to load (repeatable). "
             "Format: 'my_package.my_module' or 'my_package.my_module:ClassName'"
         ),
+    )
+    parser.add_argument(
+        "--modules",
+        nargs="*",
+        default=[],
+        metavar="SPEC",
+        help=(
+            "Pipeline modules to load. Each SPEC can be: a built-in name "
+            "(e.g. 'softkiller', 'vertexzfilter'), a YAML config file "
+            "(*.yaml/*.yml), or an import path."
+        ),
+    )
+
+    # Benchmarking
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Print per-batch and summary timing for each pipeline stage",
     )
 
     return parser.parse_args(argv)
@@ -258,9 +280,23 @@ def main(argv=None):
     elif jet_config.R > 0.4:
         modules.append(LargeRLabelModule())
 
+    # Auto-add pileup rejection modules when configured
+    if jet_config.softkiller and pythia_config.mu is not None:
+        modules.append(SoftKillerModule())
+    if jet_config.max_dz is not None and pythia_config.mu is not None:
+        modules.append(VertexZFilterModule())
+
+    # Resolve --modules specs (built-in names, YAML files, import paths)
+    if args.modules:
+        modules.extend(resolve_module_specs(args.modules))
+
+    # Legacy --module import paths
     for module_path in args.module:
         mod = load_module(module_path)
         modules.append(mod)
+
+    # Deduplicate (first occurrence wins — auto-loaded takes priority)
+    modules = deduplicate_modules(modules)
 
     for mod in modules:
         mod.init(jet_config)
@@ -276,6 +312,7 @@ def main(argv=None):
         extra_jet_fields.extend(mod.extra_jet_fields())
         extra_datasets.update(mod.extra_datasets())
 
+    bench = Benchmark(enabled=args.benchmark)
     t0 = time.time()
 
     event_offset = 0
@@ -285,12 +322,16 @@ def main(argv=None):
         extra_jet_fields=extra_jet_fields or None,
         extra_datasets=extra_datasets or None,
     ) as writer:
-        for i, events in enumerate(
-            generate_events(pythia, output_config.n_events, output_config.batch_size)
-        ):
+        event_iter = generate_events(pythia, output_config.n_events, output_config.batch_size)
+        n_batches = (output_config.n_events + output_config.batch_size - 1) // output_config.batch_size
+        for batch_i in range(n_batches):
             t_batch = time.time()
+            bench.start("event_generation")
+            events = next(event_iter)
+            bench.stop("event_generation")
 
             # Pileup overlay
+            bench.start("pileup_overlay")
             merged_particles = None
             if pythia_config.mu is not None:
                 n_events_in_batch = len(events.prt)
@@ -306,45 +347,44 @@ def main(argv=None):
                     merged_particles = overlay_pileup(
                         events, pu_events, n_pu, rng=pu_rng,
                     )
-
-            # Apply SoftKiller before clustering
-            if jet_config.softkiller and merged_particles is not None:
-                merged_particles = softkiller(
-                    merged_particles, grid_size=jet_config.softkiller_grid,
-                )
+            bench.stop("pileup_overlay")
 
             # Extract particles for pre_clustering hooks (when no pileup)
             if modules and merged_particles is None:
                 merged_particles = extract_particles(events)
 
             # Pre-clustering hooks
+            bench.start("pre_clustering")
             for mod in modules:
+                mod_name = type(mod).__name__
+                bench.start(f"pre_clustering/{mod_name}")
                 result = mod.pre_clustering(events, merged_particles)
+                bench.stop(f"pre_clustering/{mod_name}")
                 if result is not None:
                     merged_particles = result
+            bench.stop("pre_clustering")
 
             # Cluster jets (with merged particles if pileup is active)
+            bench.start("jet_clustering")
             jets, constits, jet_kin = cluster_jets(
                 events, jet_config, particles=merged_particles
             )
-
-            # Apply vertex z filter after clustering
-            if jet_config.max_dz is not None and merged_particles is not None:
-                dz_mask = vertex_z_filter(constits, jet_kin, jet_config.max_dz)
-                jets = jets[dz_mask]
-                constits = constits[dz_mask]
-                jet_kin = jet_kin[dz_mask]
+            bench.stop("jet_clustering")
 
             # Default labels (all light); labeling modules override via post_clustering
             labels = ak.zeros_like(jet_kin.pt, dtype=np.int32)
 
             # Post-clustering hooks
+            bench.start("post_clustering")
             batch_extra_jet_data = {}
             batch_extra_dataset_data = {}
             for mod in modules:
+                mod_name = type(mod).__name__
+                bench.start(f"post_clustering/{mod_name}")
                 result = mod.post_clustering(
                     events, jets, constits, jet_kin, labels
                 )
+                bench.stop(f"post_clustering/{mod_name}")
                 if result is not None:
                     if result.jet_kin is not None:
                         jet_kin = result.jet_kin
@@ -356,25 +396,31 @@ def main(argv=None):
                         constits = result.constituents
                     batch_extra_jet_data.update(result.extra_jet_data)
                     batch_extra_dataset_data.update(result.extra_dataset_data)
+            bench.stop("post_clustering")
 
             # Write to HDF5
+            bench.start("h5_writing")
             writer.write_batch(
                 jet_kin, labels, constits, jet_kin.eta, jet_kin.phi,
                 event_offset=event_offset,
                 extra_jet_data=batch_extra_jet_data or None,
                 extra_dataset_data=batch_extra_dataset_data or None,
             )
+            bench.stop("h5_writing")
+
             event_offset += len(events.prt)
+            bench.end_batch()
 
             elapsed = time.time() - t_batch
             print(
-                f"Batch {i + 1}: {writer.n_jets} jets total "
+                f"Batch {batch_i + 1}: {writer.n_jets} jets total "
                 f"({elapsed:.1f}s this batch)"
             )
 
     total_time = time.time() - t0
     print(f"\nDone. {writer.n_jets} jets written to {output_config.output_path}")
     print(f"Total time: {total_time:.1f}s")
+    bench.report()
 
     # Print Pythia statistics
     pythia.stat()

@@ -45,6 +45,9 @@ create-vds /path/to/parts/ -o combined.h5
 # NOTE: If pytest is missing, you likely installed without [dev].
 # Fix with: uv pip install -e ".[dev]"
 
+# Benchmark pipeline stages
+truthjets --process ttbar -n 10000 -o ttbar.h5 --benchmark
+
 # Plot output
 python scripts/plot_jets.py output.h5 -o plots.pdf
 ```
@@ -63,6 +66,8 @@ All source lives in `src/truthjets/`:
 - **`modules/`** — Pipeline module package. `TruthJetModule` base class with `pre_clustering`/`post_clustering` hooks. `ModuleResult` and `DatasetSchema` dataclasses. `load_module()` and `validate_modules()`.
   - **`modules/label.py`** — Built-in `HadronConeExclLabelModule` (b/c/tau labeling) and `LargeRLabelModule` (W/Z/H/top labeling).
   - **`modules/bb_opening_angle.py`** — `BBOpeningAngleModule` for computing dR between b-hadron pairs in large-R jets.
+  - **`modules/pileup_rejection.py`** — `SoftKillerModule` (pre-clustering SoftKiller) and `VertexZFilterModule` (post-clustering vertex z cut). Auto-loaded when pileup is active and `--softkiller`/`--max-dz` are set.
+- **`benchmark.py`** — `Benchmark` class for optional per-stage pipeline timing (`--benchmark` flag).
 - **`h5utils.py`** — Shared HDF5 utilities. `H5_COMPRESSION` dict (gzip-7 + shuffle) used by all dataset creation. `create_vds()` builds HDF5 Virtual Datasets from part files. Also provides the `create-vds` CLI entry point.
 - **`writer.py`** — `HDF5Writer` with resizable/chunked datasets. Pads constituents to `max_constituents` (default 80), sorts by pT descending, computes relative coordinates (deta, dphi). Supports extra jet fields and datasets from modules.
 
@@ -75,18 +80,47 @@ Modules hook into the event processing pipeline at two points: before jet cluste
 - **`HadronConeExclLabelModule`** — dR-matched b/c/tau labeling (`modules/label.py`). Auto-loaded for R=0.4 jets.
 - **`LargeRLabelModule`** — dR-matched W/Z/H/top labeling (`modules/label.py`). Auto-loaded for R > 0.4 jets. Labels: 0=QCD, 6=top, 23=Z, 24=W, 25=Higgs (PDG IDs). Priority: top > H > Z > W.
 - **`BBOpeningAngleModule`** — Computes `bb_dR` opening angle between exactly 2 b-hadrons matched to a large-R jet (`modules/bb_opening_angle.py`). Jets with != 2 matched b-hadrons get NaN. Requires R > 0.4.
+- **`SoftKillerModule`** — Applies SoftKiller pileup mitigation before clustering (`modules/pileup_rejection.py`). Auto-loaded when `--softkiller` and `--pu` are both set.
+- **`VertexZFilterModule`** — Rejects jets with large pT-weighted mean vertex z after clustering (`modules/pileup_rejection.py`). Auto-loaded when `--max-dz` and `--pu` are both set.
 
 ### Using modules
 
+The `--modules` flag accepts a mix of built-in short names, YAML config files, and import paths:
+
 ```bash
-# Custom module (auto-discovers single TruthJetModule subclass)
-truthjets --process ttbar -n 100000 -o out.h5 --module my_package.my_module
+# Built-in short names (case-insensitive)
+truthjets --process ttbar -n 100000 -o out.h5 --modules softkiller vertexzfilter
 
-# Explicit class name
+# YAML config file (with init_args for custom parameters)
+truthjets --process ttbar -n 100000 -o out.h5 --modules pipeline.yaml
+
+# Import path (existing behavior)
+truthjets --process ttbar -n 100000 -o out.h5 --modules my_package.my_module:ClassName
+
+# Mix all three
+truthjets --process ttbar -n 100000 -o out.h5 --modules softkiller pipeline.yaml my_package:MyModule
+```
+
+**Built-in short names:** `softkiller`, `vertexzfilter`, `hadronconelabel`, `largerlabel`
+
+**YAML config format:**
+```yaml
+- class_path: truthjets.modules.pileup_rejection:SoftKillerModule
+  init_args:
+    grid_size: 0.6
+
+- class_path: truthjets.modules.pileup_rejection:VertexZFilterModule
+  init_args:
+    max_dz: 3.0
+```
+
+**Module ordering:** auto-loaded (config flags) → `--modules` → legacy `--module`, deduplicated by class (first wins).
+
+The legacy `--module` flag (repeatable import path) still works:
+
+```bash
+# Legacy: explicit class name (repeatable)
 truthjets --process ttbar -n 100000 -o out.h5 --module my_package.my_module:ClassName
-
-# Multiple modules (repeatable)
-truthjets --process ttbar -n 100000 -o out.h5 --module mod_a --module mod_b
 ```
 
 ### Writing a module
@@ -154,6 +188,10 @@ bulk-generate --process ttbar --pu 60 --softkiller \
 ```
 
 Memory note: without a pre-generated pool, each worker generates its own PU events in memory (~7 GB at mu=60). On a 16 GB machine, limit `--parallel` to 1-2 without a pool, or 4+ with a pool.
+
+## Benchmarking
+
+Use `--benchmark` to print per-batch and summary timing for each pipeline stage: `event_generation`, `pileup_overlay`, `pre_clustering`, `jet_clustering`, `post_clustering`, `h5_writing`. Stages that don't fire (e.g. pileup when `--pu` is not set) are omitted from output.
 
 ## Key Dependencies
 

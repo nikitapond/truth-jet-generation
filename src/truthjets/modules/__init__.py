@@ -3,10 +3,20 @@ from __future__ import annotations
 import importlib
 import inspect
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
+import yaml
 
 from truthjets.config import JetConfig
+
+# Registry of built-in module short names -> import paths
+BUILTIN_MODULES: dict[str, str] = {
+    "softkiller": "truthjets.modules.pileup_rejection:SoftKillerModule",
+    "vertexzfilter": "truthjets.modules.pileup_rejection:VertexZFilterModule",
+    "hadronconelabel": "truthjets.modules.label:HadronConeExclLabelModule",
+    "largerlabel": "truthjets.modules.label:LargeRLabelModule",
+}
 
 
 @dataclass
@@ -115,7 +125,10 @@ class TruthJetModule:
         return {}
 
 
-def load_module(import_path: str) -> TruthJetModule:
+def load_module(
+    import_path: str,
+    init_args: dict | None = None,
+) -> TruthJetModule:
     """Load a TruthJetModule from a dotted import path.
 
     Supports two forms:
@@ -127,12 +140,16 @@ def load_module(import_path: str) -> TruthJetModule:
     ----------
     import_path : str
         Dotted Python import path, optionally with ``:ClassName`` suffix.
+    init_args : dict or None
+        If provided, passed as kwargs to the module constructor.
 
     Returns
     -------
     TruthJetModule
         An instantiated module.
     """
+    kwargs = init_args or {}
+
     if ":" in import_path:
         module_path, class_name = import_path.rsplit(":", 1)
         mod = importlib.import_module(module_path)
@@ -145,7 +162,7 @@ def load_module(import_path: str) -> TruthJetModule:
             raise TypeError(
                 f"'{class_name}' is not a TruthJetModule subclass"
             )
-        return cls()
+        return cls(**kwargs)
 
     mod = importlib.import_module(import_path)
     subclasses = [
@@ -166,7 +183,106 @@ def load_module(import_path: str) -> TruthJetModule:
             f"Multiple TruthJetModule subclasses found in '{import_path}': "
             f"{names}. Use '{import_path}:ClassName' to specify one."
         )
-    return subclasses[0]()
+    return subclasses[0](**kwargs)
+
+
+def load_modules_from_yaml(path: str | Path) -> list[TruthJetModule]:
+    """Load modules from a YAML config file.
+
+    The YAML file must contain a list of entries, each with a ``class_path``
+    key and an optional ``init_args`` dict.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the YAML file.
+
+    Returns
+    -------
+    list[TruthJetModule]
+        Instantiated modules.
+
+    Raises
+    ------
+    ValueError
+        If the YAML content is not a list or entries are missing ``class_path``.
+    """
+    path = Path(path)
+    with open(path) as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, list):
+        raise ValueError(
+            f"YAML module config '{path}' must contain a list of module "
+            f"entries, got {type(data).__name__}"
+        )
+
+    modules = []
+    for i, entry in enumerate(data):
+        if not isinstance(entry, dict) or "class_path" not in entry:
+            raise ValueError(
+                f"Entry {i} in '{path}' must be a dict with a 'class_path' key, "
+                f"got: {entry!r}"
+            )
+        class_path = entry["class_path"]
+        init_args = entry.get("init_args")
+        modules.append(load_module(class_path, init_args=init_args))
+
+    return modules
+
+
+def resolve_module_specs(specs: list[str]) -> list[TruthJetModule]:
+    """Resolve a list of module specs to instantiated modules.
+
+    Each spec is resolved in order:
+    1. If it matches a key in ``BUILTIN_MODULES`` (case-insensitive),
+       load that class with default args.
+    2. If it ends with ``.yaml`` or ``.yml``, parse as a YAML config.
+    3. Otherwise, treat as an import path (``load_module()`` behavior).
+
+    Parameters
+    ----------
+    specs : list[str]
+        Mixed list of built-in names, YAML file paths, or import paths.
+
+    Returns
+    -------
+    list[TruthJetModule]
+        Instantiated modules.
+    """
+    modules = []
+    for spec in specs:
+        builtin_key = spec.lower()
+        if builtin_key in BUILTIN_MODULES:
+            modules.append(load_module(BUILTIN_MODULES[builtin_key]))
+        elif spec.endswith((".yaml", ".yml")):
+            modules.extend(load_modules_from_yaml(spec))
+        else:
+            modules.append(load_module(spec))
+    return modules
+
+
+def deduplicate_modules(modules: list[TruthJetModule]) -> list[TruthJetModule]:
+    """Remove duplicate modules by class identity (first occurrence wins).
+
+    Parameters
+    ----------
+    modules : list[TruthJetModule]
+        List of module instances, possibly with duplicates.
+
+    Returns
+    -------
+    list[TruthJetModule]
+        Deduplicated list preserving order.
+    """
+    seen: set[type] = set()
+    result = []
+    for mod in modules:
+        cls = type(mod)
+        if cls not in seen:
+            seen.add(cls)
+            result.append(mod)
+    return result
 
 
 def validate_modules(modules: list[TruthJetModule]) -> None:
@@ -220,4 +336,8 @@ from truthjets.modules.label import (  # noqa: E402, F401
     HadronConeExclLabelModule,
     LargeRLabelModule,
     label_large_r_jets,
+)
+from truthjets.modules.pileup_rejection import (  # noqa: E402, F401
+    SoftKillerModule,
+    VertexZFilterModule,
 )
