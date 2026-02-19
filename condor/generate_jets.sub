@@ -1,0 +1,57 @@
+# HTCondor submit file for hard-scatter jet generation on lxplus.
+#
+# Usage:
+#   seq 1 100 > seeds.txt
+#
+#   # Process preset
+#   condor_submit generate_jets.sub \
+#       project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+#       output_dir=/eos/user/j/jsmith/truthjets/ttbar \
+#       process_flag=--process process_val=ttbar \
+#       prefix=ttbar n_events=100000
+#
+#   # Pythia card
+#   condor_submit generate_jets.sub \
+#       project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+#       output_dir=/eos/user/j/jsmith/truthjets/z_qq \
+#       process_flag=--pythia-card process_val=/afs/cern.ch/user/j/jsmith/truth-jet-generation/cards/z_qq.cmnd \
+#       prefix=z_qq n_events=100000 \
+#       extra_args="-R 1.0"
+#
+#   # With pileup
+#   condor_submit generate_jets.sub \
+#       project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+#       output_dir=/eos/user/j/jsmith/truthjets/ttbar_pu \
+#       process_flag=--process process_val=ttbar \
+#       prefix=ttbar n_events=100000 \
+#       extra_args="--pu 50 --pu-file /eos/user/j/jsmith/truthjets/pu_pool/" \
+#       memory=8GB
+#
+# Optional overrides (pass on condor_submit command line):
+#   extra_args="--pu 50 --pu-file /path/to/pool/ -R 1.0 --ecm 14000"
+#   memory=8GB
+#   disk=10GB
+#   max_runtime=14400
+
+executable = $(project_dir)/condor/generate_jets.sh
+arguments  = $(process_flag) $(process_val) $(n_events) $(seed) $(output_dir)/$(prefix)_$(seed).h5 $(extra_args)
+
+# Pass PROJECT_DIR to the wrapper script
+environment = "PROJECT_DIR=$(project_dir)"
+
+# AFS/EOS are mounted on lxplus workers — no file transfer needed
+should_transfer_files = NO
+
+output = $(project_dir)/condor/logs/jets_$(prefix)_$(seed).out
+error  = $(project_dir)/condor/logs/jets_$(prefix)_$(seed).err
+log    = $(project_dir)/condor/logs/jets_$(prefix).log
+
+request_cpus   = 1
+request_memory = 8GB
+request_disk   = 10GB
++MaxRuntime    = 14400
+
+# Defaults for optional variables
+extra_args =
+
+queue seed from seeds.txt

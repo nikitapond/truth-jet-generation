@@ -244,6 +244,75 @@ create-vds /path/to/parts/ -o combined.h5
 
 The VDS uses relative paths for portability. All datasets found in the input files are concatenated along axis 0, with per-dataset size tracking (so files where different datasets have different axis-0 sizes, like pileup pools, are handled correctly).
 
+## Batch generation on lxplus (HTCondor)
+
+The `condor/` directory contains submit scripts for running on CERN's lxplus batch system.
+
+### One-time setup on lxplus
+
+```bash
+# Source LCG view for Python 3.11+ and system packages (fastjet, ROOT, etc.)
+source /cvmfs/sft.cern.ch/lcg/views/LCG_106/x86_64-el9-gcc13-opt/setup.sh
+
+# Unset PYTHIA8DATA to avoid version mismatch (LCG has 8.312, pip has 8.317)
+unset PYTHIA8DATA
+
+# Create venv with system-site-packages (inherits fastjet, etc. from LCG)
+cd ~/truth-jet-generation
+python -m venv --system-site-packages .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+### Generating pileup pools
+
+```bash
+# Create a seeds file (one seed per job)
+seq 1 100 > seeds.txt
+
+# Submit 100 pool-generation jobs (100k events each)
+condor_submit condor/generate_pu_pool.sub \
+    project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+    output_dir=/eos/user/j/jsmith/truthjets/pu_pool \
+    n_events=100000
+```
+
+### Generating jets
+
+```bash
+# ttbar with a process preset
+condor_submit condor/generate_jets.sub \
+    project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+    output_dir=/eos/user/j/jsmith/truthjets/ttbar \
+    process_flag=--process process_val=ttbar \
+    prefix=ttbar n_events=100000
+
+# Large-R jets with a Pythia card
+condor_submit condor/generate_jets.sub \
+    project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+    output_dir=/eos/user/j/jsmith/truthjets/z_qq \
+    process_flag=--pythia-card \
+    process_val=/afs/cern.ch/user/j/jsmith/truth-jet-generation/cards/z_qq.cmnd \
+    prefix=z_qq n_events=100000 \
+    extra_args="-R 1.0"
+
+# With pileup (uses pre-generated pool)
+condor_submit condor/generate_jets.sub \
+    project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+    output_dir=/eos/user/j/jsmith/truthjets/ttbar_pu \
+    process_flag=--process process_val=ttbar \
+    prefix=ttbar n_events=100000 \
+    extra_args="--pu 50 --pu-file /eos/user/j/jsmith/truthjets/pu_pool/"
+```
+
+### Post-processing
+
+After jobs complete, create a Virtual Dataset for easy downstream use:
+
+```bash
+create-vds /eos/user/j/jsmith/truthjets/ttbar/ -o /eos/user/j/jsmith/truthjets/ttbar/vds.h5
+```
+
 ## Output format
 
 The HDF5 file contains two datasets:
