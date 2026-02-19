@@ -5,10 +5,11 @@ from pathlib import Path
 
 import yaml
 
+CARDS_DIR = Path(__file__).resolve().parent / "cards"
+
 
 @dataclass
 class PythiaConfig:
-    process: str | None = None
     pythia_card: str | None = None
     ecm: float = 13600.0
     pt_hat_min: float | None = None
@@ -40,32 +41,38 @@ class OutputConfig:
     batch_size: int = 10_000
 
 
-# Maps process name -> list of Pythia readString commands
-PROCESS_PRESETS: dict[str, list[str]] = {
-    "qcd": [
-        "HardQCD:all = on",
-    ],
-    "ttbar": [
-        "Top:gg2ttbar = on",
-        "Top:qqbar2ttbar = on",
-        "6:m0 = 172.5",
-    ],
-    "zprime_tt": [
-        "NewGaugeBoson:ffbar2gmZZprime = on",
-        "Zprime:gmZmode = 3",
-        "32:m0 = 3000",
-        "32:onIfAny = 6",
-    ],
-}
+def resolve_card(name_or_path: str) -> str:
+    """Resolve a card short name or file path to an absolute card path.
+
+    Checks in order:
+    1. If the path exists as-is, return it.
+    2. If CARDS_DIR / "{name}.cmnd" exists, return that.
+    3. Raise ValueError listing available cards.
+    """
+    # Direct path
+    p = Path(name_or_path)
+    if p.is_file():
+        return str(p.resolve())
+
+    # Short name lookup
+    card = CARDS_DIR / f"{name_or_path}.cmnd"
+    if card.is_file():
+        return str(card)
+
+    available = sorted(f.stem for f in CARDS_DIR.glob("*.cmnd"))
+    raise ValueError(f"Unknown card '{name_or_path}'. Available built-in cards: {available}")
 
 
 def load_pythia_config(path: str | Path) -> PythiaConfig:
     """Load PythiaConfig from a YAML file."""
     with open(path) as f:
         data = yaml.safe_load(f)
+    # Resolve pythia_card (support both 'pythia_card' and legacy 'process' keys)
+    card = data.get("pythia_card") or data.get("process")
+    pythia_card = resolve_card(card) if card else None
+
     return PythiaConfig(
-        process=data.get("process"),
-        pythia_card=data.get("pythia_card"),
+        pythia_card=pythia_card,
         ecm=data.get("ecm", 13600.0),
         pt_hat_min=data.get("pt_hat_min"),
         pt_hat_max=data.get("pt_hat_max"),

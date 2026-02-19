@@ -1,0 +1,4 @@
+! Top pair production (gg and qqbar channels)
+Top:gg2ttbar = on
+Top:qqbar2ttbar = on
+6:m0 = 172.5

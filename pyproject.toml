@@ -31,6 +31,9 @@ plot-jets = "truthjets.plotting.jets:main"
 plot-constituents = "truthjets.plotting.constituents:main"
 plot-all = "truthjets.plotting.all:main"
 
+[tool.hatch.build]
+artifacts = ["src/truthjets/cards/*.cmnd"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/truthjets"]
 
