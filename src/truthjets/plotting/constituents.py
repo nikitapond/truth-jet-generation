@@ -1,4 +1,5 @@
 """Constituent-level distribution plots."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,8 +10,8 @@ import numpy as np
 from truthjets.plotting import (
     LABEL_COLORS,
     LABEL_MAP,
-    get_label_info,
     flavor_hist,
+    get_label_info,
     load_data,
     save_figs,
 )
@@ -30,7 +31,12 @@ _PDG_TO_CATEGORY = {
 }
 
 _PARTICLE_CATEGORIES = [
-    "charged hadron", "neutral hadron", "photon", "electron", "muon", "other",
+    "charged hadron",
+    "neutral hadron",
+    "photon",
+    "electron",
+    "muon",
+    "other",
 ]
 _PARTICLE_COLORS = {
     "charged hadron": "C0",
@@ -61,9 +67,7 @@ def _flatten_valid(constit, jets):
 
     # Broadcast jet-level quantities to (n_jets, max_c) then flatten
     n_jets, max_c = valid.shape
-    lab_bcast = np.broadcast_to(
-        jets["HadronConeExclTruthLabelID"][:, None], (n_jets, max_c)
-    )
+    lab_bcast = np.broadcast_to(jets["HadronConeExclTruthLabelID"][:, None], (n_jets, max_c))
     jpt_bcast = np.broadcast_to(jets["pt"][:, None], (n_jets, max_c))
 
     deta = constit["deta"]
@@ -112,6 +116,7 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
 # Page 1: core constituent kinematics
 # ---------------------------------------------------------------------------
 
+
 def _plot_core_kinematics(flat, unique_labels, n_constit):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(f"Constituent Kinematics ({n_constit:,} constituents)", fontsize=14)
@@ -125,8 +130,14 @@ def _plot_core_kinematics(flat, unique_labels, n_constit):
     ax.hist(flat["pt"], bins=pt_bins, histtype="step", color="black", linewidth=1.5, label="All")
     for lab in jlab_unique:
         m = jlab == lab
-        ax.hist(flat["pt"][m], bins=pt_bins, histtype="stepfilled", alpha=0.3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.hist(
+            flat["pt"][m],
+            bins=pt_bins,
+            histtype="stepfilled",
+            alpha=0.3,
+            color=LABEL_COLORS.get(lab, "gray"),
+            label=LABEL_MAP.get(lab, str(lab)),
+        )
     ax.set_xlabel("Constituent $p_T$ [GeV]")
     ax.set_ylabel("Constituents")
     ax.set_xscale("log")
@@ -139,8 +150,14 @@ def _plot_core_kinematics(flat, unique_labels, n_constit):
     ax.hist(flat["energy"], bins=e_bins, histtype="step", color="black", linewidth=1.5, label="All")
     for lab in jlab_unique:
         m = jlab == lab
-        ax.hist(flat["energy"][m], bins=e_bins, histtype="stepfilled", alpha=0.3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.hist(
+            flat["energy"][m],
+            bins=e_bins,
+            histtype="stepfilled",
+            alpha=0.3,
+            color=LABEL_COLORS.get(lab, "gray"),
+            label=LABEL_MAP.get(lab, str(lab)),
+        )
     ax.set_xlabel("Constituent energy [GeV]")
     ax.set_ylabel("Constituents")
     ax.set_xscale("log")
@@ -171,6 +188,7 @@ def _plot_core_kinematics(flat, unique_labels, n_constit):
 # Page 2: constituent ordering & multiplicity
 # ---------------------------------------------------------------------------
 
+
 def _plot_ordering(jets, constit, labels, unique_labels):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle("Constituent Ordering by $p_T$ Rank", fontsize=14)
@@ -181,7 +199,7 @@ def _plot_ordering(jets, constit, labels, unique_labels):
     n_jets, max_c = valid.shape
 
     # dR per constituent
-    c_dr = np.sqrt(constit["deta"]**2 + constit["dphi"]**2)
+    c_dr = np.sqrt(constit["deta"] ** 2 + constit["dphi"] ** 2)
     c_dr[~valid] = np.nan
 
     # z = constit_pt / jet_pt
@@ -196,8 +214,9 @@ def _plot_ordering(jets, constit, labels, unique_labels):
     for lab in unique_labels:
         m = labels == lab
         means = np.nanmean(np.where(valid[m, :max_rank], c_pt[m, :max_rank], np.nan), axis=0)
-        ax.plot(ranks, means, "o-", markersize=3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.plot(
+            ranks, means, "o-", markersize=3, color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab))
+        )
     ax.set_xlabel("Constituent rank (pT-ordered)")
     ax.set_ylabel(r"$\langle p_T \rangle$ [GeV]")
     ax.set_title("Mean constituent $p_T$ vs rank")
@@ -209,8 +228,9 @@ def _plot_ordering(jets, constit, labels, unique_labels):
     for lab in unique_labels:
         m = labels == lab
         means = np.nanmean(np.where(valid[m, :max_rank], c_z[m, :max_rank], np.nan), axis=0)
-        ax.plot(ranks, means, "o-", markersize=3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.plot(
+            ranks, means, "o-", markersize=3, color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab))
+        )
     ax.set_xlabel("Constituent rank (pT-ordered)")
     ax.set_ylabel(r"$\langle z \rangle = \langle p_T^{\mathrm{c}} / p_T^{\mathrm{jet}} \rangle$")
     ax.set_title("Mean fragmentation $z$ vs rank")
@@ -222,8 +242,9 @@ def _plot_ordering(jets, constit, labels, unique_labels):
     for lab in unique_labels:
         m = labels == lab
         means = np.nanmean(np.where(valid[m, :max_rank], c_dr[m, :max_rank], np.nan), axis=0)
-        ax.plot(ranks, means, "o-", markersize=3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.plot(
+            ranks, means, "o-", markersize=3, color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab))
+        )
     ax.set_xlabel("Constituent rank (pT-ordered)")
     ax.set_ylabel(r"$\langle \Delta R \rangle$")
     ax.set_title(r"Mean $\Delta R$ vs rank")
@@ -239,8 +260,9 @@ def _plot_ordering(jets, constit, labels, unique_labels):
     for lab in unique_labels:
         m = labels == lab
         means = np.mean(cum_frac[m], axis=0)
-        ax.plot(top_n, means, "o-", markersize=3,
-                color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
+        ax.plot(
+            top_n, means, "o-", markersize=3, color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab))
+        )
     ax.set_xlabel("Number of leading constituents (top-N)")
     ax.set_ylabel(r"$\langle \sum_{i=1}^{N} p_T^i \; / \; p_T^{\mathrm{jet}} \rangle$")
     ax.set_title("Cumulative $p_T$ fraction vs top-N")
@@ -255,6 +277,7 @@ def _plot_ordering(jets, constit, labels, unique_labels):
 # ---------------------------------------------------------------------------
 # Page 3: particle composition
 # ---------------------------------------------------------------------------
+
 
 def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
@@ -290,8 +313,7 @@ def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
             m = labels == fid
             fracs.append(np.mean(per_jet_counts[cat][m] / n_valid_safe[m]) if np.any(m) else 0)
         fracs = np.array(fracs)
-        ax.bar(x, fracs, width, bottom=bottom, label=cat,
-               color=_PARTICLE_COLORS.get(cat, "gray"), alpha=0.8)
+        ax.bar(x, fracs, width, bottom=bottom, label=cat, color=_PARTICLE_COLORS.get(cat, "gray"), alpha=0.8)
         bottom += fracs
     ax.set_xticks(x)
     ax.set_xticklabels(flavor_labels_str)
@@ -309,8 +331,14 @@ def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
         m = labels == fid
         means = [np.mean(per_jet_counts[cat][m]) for cat in _PARTICLE_CATEGORIES]
         offsets = np.arange(n_cats) + i * bar_width - 0.4 + bar_width / 2
-        ax.bar(offsets, means, bar_width, label=LABEL_MAP.get(fid, str(fid)),
-               color=LABEL_COLORS.get(fid, "gray"), alpha=0.8)
+        ax.bar(
+            offsets,
+            means,
+            bar_width,
+            label=LABEL_MAP.get(fid, str(fid)),
+            color=LABEL_COLORS.get(fid, "gray"),
+            alpha=0.8,
+        )
     ax.set_xticks(np.arange(n_cats))
     ax.set_xticklabels(_PARTICLE_CATEGORIES, fontsize=8, rotation=30, ha="right")
     ax.set_ylabel("Mean count per jet")
@@ -330,10 +358,8 @@ def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
     total_pt_safe = np.where(total_pt > 0, total_pt, 1.0)
 
     x = np.arange(len(unique_labels))
-    charged_fracs = [np.mean(charged_pt[labels == fid] / total_pt_safe[labels == fid])
-                     for fid in unique_labels]
-    neutral_fracs = [np.mean(neutral_pt[labels == fid] / total_pt_safe[labels == fid])
-                     for fid in unique_labels]
+    charged_fracs = [np.mean(charged_pt[labels == fid] / total_pt_safe[labels == fid]) for fid in unique_labels]
+    neutral_fracs = [np.mean(neutral_pt[labels == fid] / total_pt_safe[labels == fid]) for fid in unique_labels]
     ax.bar(x, charged_fracs, 0.6, label="Charged", color="C0", alpha=0.8)
     ax.bar(x, neutral_fracs, 0.6, bottom=charged_fracs, label="Neutral", color="C1", alpha=0.8)
     ax.set_xticks(x)
@@ -352,8 +378,14 @@ def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
         m = flat_cats == cat
         if not np.any(m):
             continue
-        ax.hist(flat["pt"][m], bins=pt_bins, histtype="stepfilled", alpha=0.3,
-                color=_PARTICLE_COLORS.get(cat, "gray"), label=cat)
+        ax.hist(
+            flat["pt"][m],
+            bins=pt_bins,
+            histtype="stepfilled",
+            alpha=0.3,
+            color=_PARTICLE_COLORS.get(cat, "gray"),
+            label=cat,
+        )
     ax.set_xlabel("Constituent $p_T$ [GeV]")
     ax.set_ylabel("Constituents")
     ax.set_xscale("log")
@@ -369,6 +401,7 @@ def _plot_particle_composition(jets, constit, labels, unique_labels, flat):
 # Page 4: 2D constituent distributions
 # ---------------------------------------------------------------------------
 
+
 def _plot_2d_distributions(jets, constit, flat, unique_labels, n_constit):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(f"2D Constituent Distributions ({n_constit:,} constituents)", fontsize=14)
@@ -378,7 +411,8 @@ def _plot_2d_distributions(jets, constit, flat, unique_labels, n_constit):
     # 13. deta vs dphi (all)
     ax = axes[0, 0]
     h = ax.hist2d(
-        flat["deta"], flat["dphi"],
+        flat["deta"],
+        flat["dphi"],
         bins=[np.linspace(-0.5, 0.5, 60), np.linspace(-0.5, 0.5, 60)],
         cmin=1,
     )
@@ -401,11 +435,14 @@ def _plot_2d_distributions(jets, constit, flat, unique_labels, n_constit):
         xc = 0.5 * (xedges[:-1] + xedges[1:])
         yc = 0.5 * (yedges[:-1] + yedges[1:])
         ax.contour(
-            xc, yc, H.T, levels=[0.1, 0.3, 0.5, 0.7, 0.9],
-            colors=LABEL_COLORS.get(lab, "gray"), linewidths=1.2,
+            xc,
+            yc,
+            H.T,
+            levels=[0.1, 0.3, 0.5, 0.7, 0.9],
+            colors=LABEL_COLORS.get(lab, "gray"),
+            linewidths=1.2,
         )
-        ax.plot([], [], color=LABEL_COLORS.get(lab, "gray"),
-                label=LABEL_MAP.get(lab, str(lab)))
+        ax.plot([], [], color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)))
     ax.set_xlabel(r"$\Delta\eta$")
     ax.set_ylabel(r"$\Delta\phi$")
     ax.set_title(r"$\Delta\eta$-$\Delta\phi$ contours by flavor")
@@ -415,7 +452,8 @@ def _plot_2d_distributions(jets, constit, flat, unique_labels, n_constit):
     # 15. Constituent pT vs dR
     ax = axes[1, 0]
     h = ax.hist2d(
-        flat["dr"], flat["pt"],
+        flat["dr"],
+        flat["pt"],
         bins=[np.linspace(0, 0.5, 50), np.geomspace(0.1, max(flat["pt"].max(), 1), 50)],
         cmin=1,
     )
@@ -434,9 +472,9 @@ def _plot_2d_distributions(jets, constit, flat, unique_labels, n_constit):
     max_rank = min(max_c, 40)
     rank_mask = flat_rank < max_rank
     h = ax.hist2d(
-        flat_rank[rank_mask].astype(float), flat["pt"][rank_mask],
-        bins=[np.arange(-0.5, max_rank + 0.5, 1),
-              np.geomspace(0.1, max(flat["pt"].max(), 1), 50)],
+        flat_rank[rank_mask].astype(float),
+        flat["pt"][rank_mask],
+        bins=[np.arange(-0.5, max_rank + 0.5, 1), np.geomspace(0.1, max(flat["pt"].max(), 1), 50)],
         cmin=1,
     )
     fig.colorbar(h[3], ax=ax, label="Constituents")

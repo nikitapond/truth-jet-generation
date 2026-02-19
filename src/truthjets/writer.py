@@ -56,9 +56,7 @@ class HDF5Writer:
 
         # Build jet dtype with any extra fields
         if extra_jet_fields:
-            self.jet_dtype = np.dtype(
-                JET_DTYPE.descr + [(name, dt) for name, dt in extra_jet_fields]
-            )
+            self.jet_dtype = np.dtype(JET_DTYPE.descr + [(name, dt) for name, dt in extra_jet_fields])
         else:
             self.jet_dtype = JET_DTYPE
 
@@ -146,14 +144,10 @@ class HDF5Writer:
             return
 
         # Build padded constituent arrays
-        constit_array = self._pad_constituents(
-            constituents, jet_eta, jet_phi
-        )
+        constit_array = self._pad_constituents(constituents, jet_eta, jet_phi)
 
         # Count constituents per jet (use .px field to count list entries)
-        flat_nconstit = ak.to_numpy(
-            ak.flatten(ak.num(constituents.px, axis=-1))
-        ).astype(np.int32)
+        flat_nconstit = ak.to_numpy(ak.flatten(ak.num(constituents.px, axis=-1))).astype(np.int32)
         flat_nconstit = np.minimum(flat_nconstit, self.max_constituents)
 
         # Compute pt_frac_pu per jet
@@ -191,9 +185,7 @@ class HDF5Writer:
                     flat_values = values
                 else:
                     flat_values = ak.to_numpy(ak.flatten(values))
-                jet_array[field_name] = flat_values.astype(
-                    jet_array[field_name].dtype
-                )
+                jet_array[field_name] = flat_values.astype(jet_array[field_name].dtype)
 
         # Extend datasets
         self.jets_ds.resize(self._n_jets + n_new, axis=0)
@@ -245,11 +237,7 @@ class HDF5Writer:
         c_pz = flat_constit.pz
         c_E = flat_constit.E
         c_pdgid = flat_constit.pdgId
-        c_is_pu = (
-            flat_constit.is_pu
-            if "is_pu" in ak.fields(flat_constit)
-            else ak.zeros_like(c_pdgid, dtype=np.bool_)
-        )
+        c_is_pu = flat_constit.is_pu if "is_pu" in ak.fields(flat_constit) else ak.zeros_like(c_pdgid, dtype=np.bool_)
         c_pt = np.sqrt(c_px**2 + c_py**2)
 
         # Compute eta, phi for constituents
@@ -269,12 +257,8 @@ class HDF5Writer:
         deta_pad = ak.fill_none(ak.pad_none(deta, max_c, clip=True), 0.0)
         dphi_pad = ak.fill_none(ak.pad_none(dphi, max_c, clip=True), 0.0)
         c_E_pad = ak.fill_none(ak.pad_none(c_E, max_c, clip=True), 0.0)
-        c_pdgid_pad = ak.fill_none(
-            ak.pad_none(c_pdgid, max_c, clip=True), 0
-        )
-        c_is_pu_pad = ak.fill_none(
-            ak.pad_none(c_is_pu, max_c, clip=True), False
-        )
+        c_pdgid_pad = ak.fill_none(ak.pad_none(c_pdgid, max_c, clip=True), 0)
+        c_is_pu_pad = ak.fill_none(ak.pad_none(c_is_pu, max_c, clip=True), False)
 
         # Valid mask: True where original constituent existed
         valid = ak.fill_none(

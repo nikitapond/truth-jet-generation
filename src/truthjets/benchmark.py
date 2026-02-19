@@ -44,9 +44,7 @@ class Benchmark:
         if self._stack:
             parent_name, parent_t0 = self._stack[-1]
             elapsed = time.perf_counter() - parent_t0
-            self._batch_times[parent_name] = (
-                self._batch_times.get(parent_name, 0.0) + elapsed
-            )
+            self._batch_times[parent_name] = self._batch_times.get(parent_name, 0.0) + elapsed
         self._stack.append((stage, time.perf_counter()))
 
     def stop(self, stage: str | None = None) -> None:
@@ -99,8 +97,11 @@ class Benchmark:
         """Print a summary table of accumulated timings."""
         if not self.enabled or not self._totals:
             return
-        grand = sum(self._stage_total(s) for s in self.STAGES if s in self._totals
-                     or any(k.startswith(s + "/") for k in self._totals))
+        grand = sum(
+            self._stage_total(s)
+            for s in self.STAGES
+            if s in self._totals or any(k.startswith(s + "/") for k in self._totals)
+        )
         print("\n--- Benchmark Summary ---")
         print(f"{'Stage':<30s} {'Total (s)':>10s} {'Mean/batch (s)':>15s} {'%':>6s}")
         print("-" * 65)

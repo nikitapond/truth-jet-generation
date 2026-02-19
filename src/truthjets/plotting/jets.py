@@ -1,4 +1,5 @@
 """Jet-level distribution plots."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,9 +10,9 @@ import numpy as np
 from truthjets.plotting import (
     LABEL_COLORS,
     LABEL_MAP,
-    get_label_info,
     flavor_hist,
     flavor_profile,
+    get_label_info,
     load_data,
     save_figs,
 )
@@ -56,9 +57,7 @@ def _compute_substructure(jets, constit):
     flat_z = c_z.ravel()[flat_valid]
 
     # Per-constituent jet label (for flavor-split histograms)
-    lab_bcast = np.broadcast_to(
-        jets["HadronConeExclTruthLabelID"][:, None], c_pt.shape
-    )
+    lab_bcast = np.broadcast_to(jets["HadronConeExclTruthLabelID"][:, None], c_pt.shape)
     flat_lab = lab_bcast.ravel()[flat_valid]
 
     return {
@@ -216,7 +215,8 @@ def _plot_kinematics_ii(jets, labels, unique_labels, pt_range, mass_range):
     # Jet mass vs pT (2D)
     ax = axes[1, 1]
     h = ax.hist2d(
-        jets["pt"], jets["mass"],
+        jets["pt"],
+        jets["mass"],
         bins=[np.linspace(*pt_range, 50), np.linspace(*mass_range, 50)],
         cmin=1,
     )
@@ -245,7 +245,8 @@ def _plot_substructure(jets, constit, labels, unique_labels, sub, pt_range):
     ax = axes[0, 1]
     nc = jets["n_constituents"]
     h = ax.hist2d(
-        jets["pt"], nc.astype(float),
+        jets["pt"],
+        nc.astype(float),
         bins=[np.linspace(*pt_range, 50), np.arange(0, nc.max() + 2) - 0.5],
         cmin=1,
     )
@@ -264,8 +265,12 @@ def _plot_substructure(jets, constit, labels, unique_labels, sub, pt_range):
     for lab in flat_unique:
         mask = flat_lab == lab
         ax.hist(
-            flat_dr[mask], bins=dr_bins, histtype="stepfilled", alpha=0.3,
-            color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)),
+            flat_dr[mask],
+            bins=dr_bins,
+            histtype="stepfilled",
+            alpha=0.3,
+            color=LABEL_COLORS.get(lab, "gray"),
+            label=LABEL_MAP.get(lab, str(lab)),
         )
     ax.set_xlabel(r"Constituent $\Delta R$ from jet axis")
     ax.set_ylabel("Constituents")
@@ -280,8 +285,12 @@ def _plot_substructure(jets, constit, labels, unique_labels, sub, pt_range):
     for lab in flat_unique:
         mask = flat_lab == lab
         ax.hist(
-            flat_z[mask], bins=z_bins, histtype="stepfilled", alpha=0.3,
-            color=LABEL_COLORS.get(lab, "gray"), label=LABEL_MAP.get(lab, str(lab)),
+            flat_z[mask],
+            bins=z_bins,
+            histtype="stepfilled",
+            alpha=0.3,
+            color=LABEL_COLORS.get(lab, "gray"),
+            label=LABEL_MAP.get(lab, str(lab)),
         )
     ax.set_xlabel(r"$z = p_T^{\mathrm{constit}} / p_T^{\mathrm{jet}}$")
     ax.set_ylabel("Constituents")
@@ -300,7 +309,8 @@ def _plot_2d_correlations(jets, constit, labels, unique_labels, sub, pt_range, m
     # eta vs phi occupancy
     ax = axes[0, 0]
     h = ax.hist2d(
-        jets["eta"], jets["phi"],
+        jets["eta"],
+        jets["phi"],
         bins=[np.linspace(-2.5, 2.5, 50), np.linspace(-np.pi, np.pi, 50)],
         cmin=1,
     )
@@ -322,7 +332,8 @@ def _plot_2d_correlations(jets, constit, labels, unique_labels, sub, pt_range, m
     # Mass vs N constituents (2D)
     ax = axes[1, 0]
     h = ax.hist2d(
-        nc, jets["mass"],
+        nc,
+        jets["mass"],
         bins=[np.arange(0, nc.max() + 2) - 0.5, np.linspace(*mass_range, 50)],
         cmin=1,
     )
@@ -390,7 +401,9 @@ def _plot_flavor_profiles(jets, labels, unique_labels, sub, pt_range):
             n_total = np.sum(sel)
             fracs.append(np.sum(labels[sel] == fid) / n_total if n_total > 0 else np.nan)
         ax.plot(
-            pt_centers, fracs, "o-",
+            pt_centers,
+            fracs,
+            "o-",
             color=LABEL_COLORS.get(fid, "gray"),
             label=LABEL_MAP.get(fid, str(fid)),
             markersize=3,
@@ -407,11 +420,11 @@ def _plot_flavor_profiles(jets, labels, unique_labels, sub, pt_range):
 
 # Particle type -> marker mapping for jet displays
 _PARTICLE_MARKERS = {
-    "charged hadron": ("o", "C0"),   # pi+-, K+-, p
-    "neutral hadron": ("s", "C4"),   # K0L, n
-    "photon": ("*", "C1"),           # gamma
-    "electron": ("^", "C2"),         # e+-
-    "muon": ("v", "C3"),             # mu+-
+    "charged hadron": ("o", "C0"),  # pi+-, K+-, p
+    "neutral hadron": ("s", "C4"),  # K0L, n
+    "photon": ("*", "C1"),  # gamma
+    "electron": ("^", "C2"),  # e+-
+    "muon": ("v", "C3"),  # mu+-
     "other": ("D", "C7"),
 }
 
@@ -466,15 +479,20 @@ def _plot_single_jet(ax, jet, c_row, jet_R):
         if not np.any(mask):
             continue
         ax.scatter(
-            deta[mask], dphi[mask],
-            s=sizes[mask], marker=marker, color=color,
-            edgecolors="black", linewidths=0.5, alpha=0.85,
-            label=cat, zorder=3,
+            deta[mask],
+            dphi[mask],
+            s=sizes[mask],
+            marker=marker,
+            color=color,
+            edgecolors="black",
+            linewidths=0.5,
+            alpha=0.85,
+            label=cat,
+            zorder=3,
         )
 
     # Draw jet cone
-    circle = plt.Circle((0, 0), jet_R, fill=False, linestyle="--",
-                         color="gray", linewidth=1.0, zorder=2)
+    circle = plt.Circle((0, 0), jet_R, fill=False, linestyle="--", color="gray", linewidth=1.0, zorder=2)
     ax.add_patch(circle)
 
     # Axis formatting
@@ -488,8 +506,7 @@ def _plot_single_jet(ax, jet, c_row, jet_R):
     ax.set_ylabel(r"$\Delta\phi$")
 
     ax.set_title(
-        f"$p_T$={jet['pt']:.0f} GeV, m={jet['mass']:.1f} GeV, "
-        f"$n_{{\\mathrm{{constit}}}}$={jet['n_constituents']}",
+        f"$p_T$={jet['pt']:.0f} GeV, m={jet['mass']:.1f} GeV, $n_{{\\mathrm{{constit}}}}$={jet['n_constituents']}",
         fontsize=9,
     )
 
@@ -501,7 +518,7 @@ def _plot_jet_displays(jets, constit, labels, unique_labels, n_jets=N_DISPLAY_JE
 
     # Infer jet R from max constituent dR (approximate)
     all_valid = constit["valid"]
-    all_dr = np.sqrt(constit["deta"]**2 + constit["dphi"]**2)
+    all_dr = np.sqrt(constit["deta"] ** 2 + constit["dphi"] ** 2)
     all_dr[~all_valid] = 0.0
     max_dr = np.max(all_dr)
     # Round to nearest standard R value
@@ -520,8 +537,7 @@ def _plot_jet_displays(jets, constit, labels, unique_labels, n_jets=N_DISPLAY_JE
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
         fname = LABEL_MAP.get(fid, str(fid))
         fig.suptitle(
-            f"Jet Displays: {fname} ({n_pick} random jets, "
-            f"marker size $\\propto\\; 1/p_T$)",
+            f"Jet Displays: {fname} ({n_pick} random jets, marker size $\\propto\\; 1/p_T$)",
             fontsize=14,
         )
 
@@ -534,10 +550,8 @@ def _plot_jet_displays(jets, constit, labels, unique_labels, n_jets=N_DISPLAY_JE
         if n_pick <= 5:
             ax_leg.set_axis_off()
             for cat, (marker, color) in _PARTICLE_MARKERS.items():
-                ax_leg.scatter([], [], s=80, marker=marker, color=color,
-                               edgecolors="black", linewidths=0.5, label=cat)
-            ax_leg.legend(loc="center", fontsize=11, frameon=True,
-                          title="Particle type", title_fontsize=12)
+                ax_leg.scatter([], [], s=80, marker=marker, color=color, edgecolors="black", linewidths=0.5, label=cat)
+            ax_leg.legend(loc="center", fontsize=11, frameon=True, title="Particle type", title_fontsize=12)
 
         fig.tight_layout()
         figs.append(fig)
@@ -574,7 +588,8 @@ def _plot_pileup(jets, constit, labels, unique_labels, pt_range):
     # pt_frac_pu vs jet pT (2D)
     ax = axes[1, 0]
     h = ax.hist2d(
-        jets["pt"], pt_frac_pu,
+        jets["pt"],
+        pt_frac_pu,
         bins=[np.linspace(*pt_range, 50), np.linspace(0, 1, 50)],
         cmin=1,
     )

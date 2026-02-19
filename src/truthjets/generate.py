@@ -16,10 +16,7 @@ def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
         pythia.readFile(config.pythia_card)
     else:
         if config.process not in PROCESS_PRESETS:
-            raise ValueError(
-                f"Unknown process '{config.process}'. "
-                f"Available: {list(PROCESS_PRESETS)}"
-            )
+            raise ValueError(f"Unknown process '{config.process}'. Available: {list(PROCESS_PRESETS)}")
         for setting in PROCESS_PRESETS[config.process]:
             pythia.readString(setting)
 
@@ -86,9 +83,7 @@ def generate_pileup_batch(pythia_pu: pythia8mc.Pythia, n_events: int):
     return pythia_pu.nextBatch(n_events)
 
 
-def generate_events(
-    pythia: pythia8mc.Pythia, n_events: int, batch_size: int
-) -> Iterator:
+def generate_events(pythia: pythia8mc.Pythia, n_events: int, batch_size: int) -> Iterator:
     """Yield batches of events as Awkward Arrays."""
     generated = 0
     while generated < n_events:

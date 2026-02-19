@@ -63,22 +63,16 @@ class TestPDGClassification:
 
 class TestDeltaR:
     def test_same_point(self):
-        dr = _delta_r(
-            np.array([1.0]), np.array([1.0]), np.array([1.0]), np.array([1.0])
-        )
+        dr = _delta_r(np.array([1.0]), np.array([1.0]), np.array([1.0]), np.array([1.0]))
         np.testing.assert_allclose(dr, 0.0, atol=1e-10)
 
     def test_known_distance(self):
-        dr = _delta_r(
-            np.array([0.0]), np.array([0.0]), np.array([0.3]), np.array([0.4])
-        )
+        dr = _delta_r(np.array([0.0]), np.array([0.0]), np.array([0.3]), np.array([0.4]))
         np.testing.assert_allclose(dr, 0.5, atol=1e-10)
 
     def test_phi_wrapping(self):
         # Points near +pi and -pi should be close
-        dr = _delta_r(
-            np.array([0.0]), np.array([3.1]), np.array([0.0]), np.array([-3.1])
-        )
+        dr = _delta_r(np.array([0.0]), np.array([3.1]), np.array([0.0]), np.array([-3.1]))
         assert dr[0] < 0.1  # Should be ~0.083, not ~6.2
 
 
@@ -103,9 +97,7 @@ class TestLabelJets:
 
     def test_b_jet_label(self):
         # B meson at eta=0.5, phi=0.5
-        events = self._make_mock_events(
-            [521, 211, 211], [0.5, 1.0, -1.0], [0.5, 1.0, -1.0]
-        )
+        events = self._make_mock_events([521, 211, 211], [0.5, 1.0, -1.0], [0.5, 1.0, -1.0])
         jet_eta = ak.Array([[0.5]])
         jet_phi = ak.Array([[0.5]])
         labels = label_jets(events, jet_eta, jet_phi, R=0.4)
@@ -113,9 +105,7 @@ class TestLabelJets:
 
     def test_c_jet_label(self):
         # D meson at eta=0.5, phi=0.5
-        events = self._make_mock_events(
-            [411, 211], [0.5, -1.0], [0.5, -1.0]
-        )
+        events = self._make_mock_events([411, 211], [0.5, -1.0], [0.5, -1.0])
         jet_eta = ak.Array([[0.5]])
         jet_phi = ak.Array([[0.5]])
         labels = label_jets(events, jet_eta, jet_phi, R=0.4)
@@ -123,9 +113,7 @@ class TestLabelJets:
 
     def test_light_jet_label(self):
         # Only pions, far from jet
-        events = self._make_mock_events(
-            [211, 211], [2.0, -2.0], [2.0, -2.0]
-        )
+        events = self._make_mock_events([211, 211], [2.0, -2.0], [2.0, -2.0])
         jet_eta = ak.Array([[0.0]])
         jet_phi = ak.Array([[0.0]])
         labels = label_jets(events, jet_eta, jet_phi, R=0.4)
@@ -133,9 +121,7 @@ class TestLabelJets:
 
     def test_b_over_c_priority(self):
         # Both B and D meson near jet -> should be labeled b
-        events = self._make_mock_events(
-            [521, 411], [0.5, 0.5], [0.5, 0.5]
-        )
+        events = self._make_mock_events([521, 411], [0.5, 0.5], [0.5, 0.5])
         jet_eta = ak.Array([[0.5]])
         jet_phi = ak.Array([[0.5]])
         labels = label_jets(events, jet_eta, jet_phi, R=0.4)
@@ -150,9 +136,7 @@ class TestLabelJets:
 
     def test_b_over_tau_priority(self):
         # B hadron and tau near jet -> b wins
-        events = self._make_mock_events(
-            [521, 15], [0.5, 0.5], [0.5, 0.5]
-        )
+        events = self._make_mock_events([521, 15], [0.5, 0.5], [0.5, 0.5])
         jet_eta = ak.Array([[0.5]])
         jet_phi = ak.Array([[0.5]])
         labels = label_jets(events, jet_eta, jet_phi, R=0.4)

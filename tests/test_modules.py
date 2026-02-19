@@ -18,8 +18,7 @@ from truthjets.modules import (
     load_module,
     validate_modules,
 )
-from truthjets.writer import CONSTITUENT_DTYPE, JET_DTYPE, HDF5Writer
-
+from truthjets.writer import JET_DTYPE, HDF5Writer
 
 # ---------------------------------------------------------------------------
 # Helper modules for tests
@@ -37,7 +36,6 @@ class ExtraFieldModule(TruthJetModule):
         return [("my_score", np.float32)]
 
     def post_clustering(self, events, jets, constituents, jet_kin, labels):
-        n_jets = sum(len(ak.to_numpy(ak.flatten(jet_kin.pt[i:i+1]))) for i in range(len(jet_kin.pt)))
         flat_pt = ak.to_numpy(ak.flatten(jet_kin.pt))
         return ModuleResult(extra_jet_data={"my_score": flat_pt * 0.5})
 
@@ -94,26 +92,14 @@ def _make_test_data(n_jets_per_event=2, n_events=3, n_constit=5):
     rng = np.random.default_rng(42)
     jet_kin = ak.zip(
         {
-            "pt": ak.Array(
-                rng.uniform(20, 200, (n_events, n_jets_per_event)).tolist()
-            ),
-            "eta": ak.Array(
-                rng.uniform(-2.5, 2.5, (n_events, n_jets_per_event)).tolist()
-            ),
-            "phi": ak.Array(
-                rng.uniform(-np.pi, np.pi, (n_events, n_jets_per_event)).tolist()
-            ),
-            "mass": ak.Array(
-                rng.uniform(0, 20, (n_events, n_jets_per_event)).tolist()
-            ),
-            "energy": ak.Array(
-                rng.uniform(50, 500, (n_events, n_jets_per_event)).tolist()
-            ),
+            "pt": ak.Array(rng.uniform(20, 200, (n_events, n_jets_per_event)).tolist()),
+            "eta": ak.Array(rng.uniform(-2.5, 2.5, (n_events, n_jets_per_event)).tolist()),
+            "phi": ak.Array(rng.uniform(-np.pi, np.pi, (n_events, n_jets_per_event)).tolist()),
+            "mass": ak.Array(rng.uniform(0, 20, (n_events, n_jets_per_event)).tolist()),
+            "energy": ak.Array(rng.uniform(50, 500, (n_events, n_jets_per_event)).tolist()),
         }
     )
-    labels = ak.Array(
-        rng.choice([0, 4, 5, 15], (n_events, n_jets_per_event)).tolist()
-    )
+    labels = ak.Array(rng.choice([0, 4, 5, 15], (n_events, n_jets_per_event)).tolist())
     constit_list = []
     for i in range(n_events):
         event_constits = []
@@ -145,14 +131,16 @@ class TestLoadModule:
     def test_load_explicit_class(self, tmp_path):
         """Load a module with explicit :ClassName syntax."""
         mod_file = tmp_path / "my_mod.py"
-        mod_file.write_text(textwrap.dedent("""\
+        mod_file.write_text(
+            textwrap.dedent("""\
             import numpy as np
             from truthjets.modules import TruthJetModule
 
             class MyModule(TruthJetModule):
                 def extra_jet_fields(self):
                     return [("test_field", np.float32)]
-        """))
+        """)
+        )
         sys.path.insert(0, str(tmp_path))
         try:
             mod = load_module("my_mod:MyModule")
@@ -165,12 +153,14 @@ class TestLoadModule:
     def test_load_auto_discover(self, tmp_path):
         """Load a module with auto-discovery (no :ClassName)."""
         mod_file = tmp_path / "auto_mod.py"
-        mod_file.write_text(textwrap.dedent("""\
+        mod_file.write_text(
+            textwrap.dedent("""\
             from truthjets.modules import TruthJetModule
 
             class AutoModule(TruthJetModule):
                 pass
-        """))
+        """)
+        )
         sys.path.insert(0, str(tmp_path))
         try:
             mod = load_module("auto_mod")
@@ -182,7 +172,8 @@ class TestLoadModule:
     def test_load_auto_discover_multiple_raises(self, tmp_path):
         """Multiple subclasses without :ClassName should raise."""
         mod_file = tmp_path / "multi_mod.py"
-        mod_file.write_text(textwrap.dedent("""\
+        mod_file.write_text(
+            textwrap.dedent("""\
             from truthjets.modules import TruthJetModule
 
             class ModA(TruthJetModule):
@@ -190,7 +181,8 @@ class TestLoadModule:
 
             class ModB(TruthJetModule):
                 pass
-        """))
+        """)
+        )
         sys.path.insert(0, str(tmp_path))
         try:
             with pytest.raises(ImportError, match="Multiple"):
@@ -296,11 +288,14 @@ class TestWriterWithExtraFields:
 
         try:
             with HDF5Writer(path, jet_config, extra_jet_fields=extra_fields) as writer:
-                n_total = int(ak.sum(ak.num(jet_kin.pt)))
                 flat_pt = ak.to_numpy(ak.flatten(jet_kin.pt)).astype(np.float32)
                 extra_data = {"my_score": flat_pt * 0.5}
                 writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi,
+                    jet_kin,
+                    labels,
+                    constituents,
+                    jet_kin.eta,
+                    jet_kin.phi,
                     extra_jet_data=extra_data,
                 )
 
@@ -329,15 +324,17 @@ class TestWriterWithExtraFields:
             path = f.name
 
         try:
-            with HDF5Writer(
-                path, jet_config, extra_datasets=extra_datasets
-            ) as writer:
+            with HDF5Writer(path, jet_config, extra_datasets=extra_datasets) as writer:
                 n_total = int(ak.sum(ak.num(jet_kin.pt)))
                 flat_pt = ak.to_numpy(ak.flatten(jet_kin.pt)).astype(np.float32)
                 ds_data = np.zeros(n_total, dtype=ds_dtype)
                 ds_data["value"] = flat_pt * 2.0
                 writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi,
+                    jet_kin,
+                    labels,
+                    constituents,
+                    jet_kin.eta,
+                    jet_kin.phi,
                     extra_dataset_data={"custom_info": ds_data},
                 )
 
@@ -362,13 +359,15 @@ class TestWriterWithExtraFields:
             path = f.name
 
         try:
-            with HDF5Writer(
-                path, jet_config, extra_datasets=extra_datasets
-            ) as writer:
+            with HDF5Writer(path, jet_config, extra_datasets=extra_datasets) as writer:
                 n_total = int(ak.sum(ak.num(jet_kin.pt)))
                 vec_data = np.ones((n_total, 3), dtype=np.float32)
                 writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi,
+                    jet_kin,
+                    labels,
+                    constituents,
+                    jet_kin.eta,
+                    jet_kin.phi,
                     extra_dataset_data={"vectors": vec_data},
                 )
 
@@ -395,9 +394,7 @@ class TestBackwardCompatibility:
 
         try:
             with HDF5Writer(path, jet_config) as writer:
-                writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi)
 
             with h5py.File(path, "r") as f:
                 assert f["jets"].dtype == JET_DTYPE
@@ -416,15 +413,15 @@ class TestBackwardCompatibility:
         try:
             with HDF5Writer(path, jet_config, extra_jet_fields=extra_fields) as writer:
                 for batch_idx in range(3):
-                    jet_kin, labels, constits = _make_test_data(
-                        n_jets_per_event=2, n_events=2
-                    )
+                    jet_kin, labels, constits = _make_test_data(n_jets_per_event=2, n_events=2)
                     n = int(ak.sum(ak.num(jet_kin.pt)))
-                    extra_data = {
-                        "batch_id": np.full(n, batch_idx, dtype=np.int32)
-                    }
+                    extra_data = {"batch_id": np.full(n, batch_idx, dtype=np.int32)}
                     writer.write_batch(
-                        jet_kin, labels, constits, jet_kin.eta, jet_kin.phi,
+                        jet_kin,
+                        labels,
+                        constits,
+                        jet_kin.eta,
+                        jet_kin.phi,
                         extra_jet_data=extra_data,
                     )
                 assert writer.n_jets == 12

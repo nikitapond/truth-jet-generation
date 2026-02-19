@@ -243,7 +243,9 @@ def _load_single_pool(path: Path) -> ak.Array:
 
 
 def sample_from_pool(
-    pool: ak.Array, n_events: int, rng: np.random.Generator,
+    pool: ak.Array,
+    n_events: int,
+    rng: np.random.Generator,
 ) -> ak.Array:
     """Sample events from pool with replacement and apply random phi rotation.
 

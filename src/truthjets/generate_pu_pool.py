@@ -4,6 +4,7 @@
 Example:
     generate-pu-pool -n 100000 -o pu_pool.h5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,27 +17,37 @@ from truthjets.pileup import generate_pileup_pool, save_pileup_pool
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate a pileup pool HDF5 file for reuse across hard-scatter runs"
-    )
+    parser = argparse.ArgumentParser(description="Generate a pileup pool HDF5 file for reuse across hard-scatter runs")
     parser.add_argument(
-        "-n", "--n-events", type=int, required=True,
+        "-n",
+        "--n-events",
+        type=int,
+        required=True,
         help="Number of min-bias events to generate",
     )
     parser.add_argument(
-        "-o", "--output", type=Path, required=True,
+        "-o",
+        "--output",
+        type=Path,
+        required=True,
         help="Output HDF5 file path",
     )
     parser.add_argument(
-        "--ecm", type=float, default=13600.0,
+        "--ecm",
+        type=float,
+        default=13600.0,
         help="Centre-of-mass energy in GeV (default: 13600.0)",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed (default: 42)",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=10000,
+        "--batch-size",
+        type=int,
+        default=10000,
         help="Events per Pythia batch (default: 10000)",
     )
 
@@ -54,6 +65,7 @@ def main():
     elapsed = time.time() - t0
 
     import awkward as ak
+
     total_particles = int(ak.sum(ak.num(pool, axis=1)))
     file_size_mb = args.output.stat().st_size / (1024 * 1024)
 

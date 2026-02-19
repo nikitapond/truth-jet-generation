@@ -13,9 +13,11 @@ _ARCTANH_CLAMP = 1.0 - 1e-10
 def safe_eta(pz, p):
     """Compute pseudorapidity, clamping arctanh argument to avoid divergence at |pz|==p."""
     cos_theta = ak.where(p > 0, pz / ak.where(p > 0, p, 1.0), 0.0)
-    clamped = ak.where(cos_theta > _ARCTANH_CLAMP, _ARCTANH_CLAMP,
-              ak.where(cos_theta < -_ARCTANH_CLAMP, -_ARCTANH_CLAMP, cos_theta))
+    clamped = ak.where(
+        cos_theta > _ARCTANH_CLAMP, _ARCTANH_CLAMP, ak.where(cos_theta < -_ARCTANH_CLAMP, -_ARCTANH_CLAMP, cos_theta)
+    )
     return np.arctanh(clamped)
+
 
 _ALGORITHMS = {
     "antikt": fastjet.antikt_algorithm,
@@ -83,10 +85,7 @@ def cluster_jets(events, jet_config: JetConfig, particles=None):
     # Jet definition
     alg = _ALGORITHMS.get(jet_config.algorithm)
     if alg is None:
-        raise ValueError(
-            f"Unknown algorithm '{jet_config.algorithm}'. "
-            f"Available: {list(_ALGORITHMS)}"
-        )
+        raise ValueError(f"Unknown algorithm '{jet_config.algorithm}'. Available: {list(_ALGORITHMS)}")
     jetdef = fastjet.JetDefinition(alg, jet_config.R)
 
     # Cluster
@@ -130,6 +129,4 @@ def compute_jet_kinematics(jets):
     mass_sq = E**2 - px**2 - py**2 - pz**2
     mass = np.sqrt(ak.where(mass_sq > 0, mass_sq, 0.0))
 
-    return ak.zip(
-        {"pt": pt, "eta": eta, "phi": phi, "mass": mass, "energy": E}
-    )
+    return ak.zip({"pt": pt, "eta": eta, "phi": phi, "mass": mass, "energy": E})
