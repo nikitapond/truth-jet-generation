@@ -26,8 +26,14 @@ _ALGORITHMS = {
 }
 
 
+_NEUTRINO_PDGIDS = {12, 14, 16}
+
+
 def extract_particles(events):
-    """Extract final-state particles from Pythia events.
+    """Extract visible final-state particles from Pythia events.
+
+    Neutrinos (pdgId 12, 14, 16) are excluded since they are invisible
+    and should not be clustered into jets.
 
     Parameters
     ----------
@@ -42,6 +48,9 @@ def extract_particles(events):
     """
     prt = events.prt
     final = prt[prt.status > 0]
+    abs_id = np.abs(final.id)
+    is_neutrino = (abs_id == 12) | (abs_id == 14) | (abs_id == 16)
+    final = final[~is_neutrino]
     return ak.zip(
         {
             "px": final.p.px,
