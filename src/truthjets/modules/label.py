@@ -56,11 +56,77 @@ def _delta_r(eta1, phi1, eta2, phi2):
     return np.sqrt(deta**2 + dphi**2)
 
 
+# Neutrino PDG IDs (invisible decay products)
+_NEUTRINO_PDGIDS = {12, 14, 16}
+
+
+def _has_visible_decay(particles, res_mask):
+    """Check which resonances have at least one visible (non-neutrino) daughter.
+
+    Parameters
+    ----------
+    particles : ak.Array
+        Full particle record with fields ``id``, ``daughter1``, ``daughter2``.
+    res_mask : ak.Array
+        Boolean mask selecting the resonance particles.
+
+    Returns
+    -------
+    visible_mask : ak.Array
+        Boolean mask (same shape as res_mask's True entries) indicating
+        which resonances have visible decays.
+    """
+    # If daughter fields aren't present, assume all resonances are visible
+    if "daughter1" not in particles.fields:
+        n_res = ak.num(ak.drop_none(ak.mask(particles.id, res_mask)))
+        return ak.unflatten(np.ones(ak.sum(n_res), dtype=bool), n_res)
+
+    prt_id = particles.id
+    d1 = particles.daughter1
+    d2 = particles.daughter2
+
+    # Get daughter ranges and the resonance's own PDG ID
+    res_d1 = ak.drop_none(ak.mask(d1, res_mask))
+    res_d2 = ak.drop_none(ak.mask(d2, res_mask))
+    res_id = ak.drop_none(ak.mask(np.abs(prt_id), res_mask))
+
+    # For each resonance, check daughters
+    counts = ak.num(prt_id)
+    counts_np = ak.to_numpy(counts)
+    offsets = np.concatenate([[0], np.cumsum(counts_np)])
+    flat_id = ak.to_numpy(ak.flatten(np.abs(prt_id)))
+
+    flat_d1 = ak.to_numpy(ak.flatten(res_d1))
+    flat_d2 = ak.to_numpy(ak.flatten(res_d2))
+    flat_res_id = ak.to_numpy(ak.flatten(res_id))
+    res_counts = ak.num(res_d1)
+    event_idx = np.repeat(np.arange(len(counts_np)), ak.to_numpy(res_counts))
+
+    # Invisible PDG IDs: neutrinos + copies of the resonance itself
+    has_visible = np.zeros(len(flat_d1), dtype=bool)
+    for i in range(len(flat_d1)):
+        if flat_d1[i] == 0:
+            continue
+        own_id = flat_res_id[i]
+        global_start = flat_d1[i] + offsets[event_idx[i]]
+        global_end = flat_d2[i] + offsets[event_idx[i]]
+        for j in range(global_start, global_end + 1):
+            if j < len(flat_id):
+                did = flat_id[j]
+                # Skip self-copies and neutrinos
+                if did != own_id and did not in _NEUTRINO_PDGIDS:
+                    has_visible[i] = True
+                    break
+
+    return ak.unflatten(has_visible, res_counts)
+
+
 def label_large_r_jets(events, jet_eta, jet_phi, R):
     """Label large-R jets by dR-matching to truth resonances.
 
     Matches W, Z, H, and top quarks in the event record to jets
-    within a cone of radius R.
+    within a cone of radius R. Only resonances with at least one
+    visible (non-neutrino) daughter are considered.
 
     Parameters
     ----------
@@ -96,10 +162,15 @@ def label_large_r_jets(events, jet_eta, jet_phi, R):
     # Match each resonance type; last write wins so process in priority order
     for abs_pdgid, label_val in _LARGE_R_PRIORITY:
         mask = np.abs(prt_id) == abs_pdgid
-        res_eta = ak.drop_none(ak.mask(prt_eta, mask))
-        res_phi = ak.drop_none(ak.mask(prt_phi, mask))
 
-        # Skip if no particles of this type in any event
+        # Filter to only resonances with visible decays
+        visible = _has_visible_decay(particles, mask)
+        res_eta_all = ak.drop_none(ak.mask(prt_eta, mask))
+        res_phi_all = ak.drop_none(ak.mask(prt_phi, mask))
+        res_eta = ak.drop_none(ak.mask(res_eta_all, visible))
+        res_phi = ak.drop_none(ak.mask(res_phi_all, visible))
+
+        # Skip if no visible resonances of this type in any event
         if ak.sum(ak.num(res_eta)) == 0:
             continue
 

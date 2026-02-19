@@ -1,4 +1,4 @@
-! ZH associated production with H -> bb, Z -> ll
+! ZH associated production with H -> bb, Z -> vv (invisible)
 ! Suitable for Higgs tagging studies with large-R jets
 
 ! ZH production
@@ -8,9 +8,9 @@ HiggsSM:ffbar2HZ = on
 25:onMode = off
 25:onIfAny = 5
 
-! Force Z -> leptons (e, mu only — no tau)
+! Force Z -> neutrinos (invisible)
 23:onMode = off
-23:onIfAny = 11 13
+23:onIfAny = 12 14 16
 
 ! Phase space: boosted regime
 PhaseSpace:pTHatMin = 150.0
