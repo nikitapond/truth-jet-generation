@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from truthjets.cluster import cluster_jets
-from truthjets.config import JetConfig, PythiaConfig
+from truthjets.config import JetConfig, PythiaConfig, resolve_card
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
 from truthjets.label import label_jets
 from truthjets.pileup import overlay_pileup, sample_n_pileup
@@ -21,7 +21,7 @@ from truthjets.writer import HDF5Writer
 def output_file():
     """Run a small end-to-end generation and return the HDF5 path."""
     pythia_config = PythiaConfig(
-        process="ttbar",
+        pythia_card=resolve_card("ttbar"),
         ecm=13600.0,
         seed=123,
     )
@@ -124,7 +124,7 @@ class TestIntegration:
 def output_file_pu():
     """Run an end-to-end generation with pileup and return the HDF5 path."""
     pythia_config = PythiaConfig(
-        process="ttbar",
+        pythia_card=resolve_card("ttbar"),
         ecm=13600.0,
         seed=456,
         mu=20.0,

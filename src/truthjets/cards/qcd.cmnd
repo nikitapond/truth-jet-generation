@@ -1,0 +1,2 @@
+! Generic QCD hard processes
+HardQCD:all = on

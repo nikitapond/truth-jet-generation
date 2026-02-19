@@ -19,6 +19,7 @@ import time
 from multiprocessing import Pool
 from pathlib import Path
 
+from truthjets.config import resolve_card
 from truthjets.h5utils import create_vds
 
 
@@ -70,15 +71,13 @@ def run_job(job: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Bulk-generate truth jet HDF5 files in parallel")
-    source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument(
+    parser.add_argument(
         "--process",
-        help="Physics process preset (e.g. ttbar, qcd, zprime_tt)",
-    )
-    source.add_argument(
         "--pythia-card",
-        type=Path,
-        help="Path to a Pythia command file (.cmnd)",
+        dest="pythia_card",
+        default=None,
+        required=True,
+        help="Pythia card: a built-in name (e.g. ttbar, qcd, zprime_tt) or path to a .cmnd file",
     )
     parser.add_argument(
         "--prefix",
@@ -132,15 +131,14 @@ def main():
 
     args, extra = parser.parse_known_args()
 
+    # Resolve card (short name or path)
+    args.pythia_card = resolve_card(args.pythia_card)
+
     # Derive file prefix and CLI args to forward to truthjets
-    if args.process:
-        prefix = args.prefix or args.process
-        source_args = ["--process", args.process]
-        source_label = f"Process: {args.process}"
-    else:
-        prefix = args.prefix or args.pythia_card.stem
-        source_args = ["--pythia-card", str(args.pythia_card)]
-        source_label = f"Pythia card: {args.pythia_card}"
+    card_path = Path(args.pythia_card)
+    prefix = args.prefix or card_path.stem
+    source_args = ["--pythia-card", str(args.pythia_card)]
+    source_label = f"Pythia card: {args.pythia_card}"
 
     # Determine directory layout
     # --vds without --final-dir: parts go directly to {output_dir}/parts/

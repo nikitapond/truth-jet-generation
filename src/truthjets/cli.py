@@ -15,6 +15,7 @@ from truthjets.config import (
     PythiaConfig,
     load_jet_and_output_config,
     load_pythia_config,
+    resolve_card,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
 from truthjets.modules import (
@@ -56,13 +57,10 @@ def parse_args(argv=None):
     # Pythia settings
     parser.add_argument(
         "--process",
-        default=None,
-        help="Physics process preset (e.g. ttbar, qcd, zprime_tt)",
-    )
-    parser.add_argument(
         "--pythia-card",
+        dest="pythia_card",
         default=None,
-        help="Path to a Pythia command file (.cmnd)",
+        help="Pythia card: a built-in name (e.g. ttbar, qcd, zprime_tt) or path to a .cmnd file",
     )
     parser.add_argument("--ecm", type=float, default=13600.0, help="Center-of-mass energy in GeV")
     parser.add_argument("--pt-hat-min", type=float, default=None)
@@ -179,16 +177,12 @@ def main(argv=None):
         output_config = OutputConfig()
 
     # CLI flags override config file values
-    if args.process is not None:
-        pythia_config.process = args.process
     if args.pythia_card is not None:
-        pythia_config.pythia_card = args.pythia_card
+        pythia_config.pythia_card = resolve_card(args.pythia_card)
 
-    # Validate: exactly one of --process or --pythia-card must be set
-    if pythia_config.process is not None and pythia_config.pythia_card is not None:
-        raise SystemExit("error: cannot use both --process and --pythia-card")
-    if pythia_config.process is None and pythia_config.pythia_card is None:
-        raise SystemExit("error: must specify either --process or --pythia-card")
+    # Validate: pythia_card must be set (via --pythia-card/--process or config file)
+    if pythia_config.pythia_card is None:
+        raise SystemExit("error: must specify --process or --pythia-card")
 
     pythia_config.ecm = args.ecm
     pythia_config.seed = args.seed
@@ -227,10 +221,7 @@ def main(argv=None):
     if (pythia_config.pu_pre_gen is not None or pythia_config.pu_file is not None) and pythia_config.mu is None:
         raise SystemExit("error: --pu-pre-gen and --pu-file require --pu to be set")
 
-    if pythia_config.pythia_card is not None:
-        print(f"Pythia card: {pythia_config.pythia_card}")
-    else:
-        print(f"Process: {pythia_config.process}")
+    print(f"Pythia card: {pythia_config.pythia_card}")
     print(f"ECM: {pythia_config.ecm} GeV")
     if pythia_config.mu is not None:
         print(f"Pileup: <mu> = {pythia_config.mu}")

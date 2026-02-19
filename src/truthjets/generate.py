@@ -4,21 +4,17 @@ from collections.abc import Iterator
 
 import pythia8mc
 
-from truthjets.config import PROCESS_PRESETS, PythiaConfig
+from truthjets.config import PythiaConfig
 
 
 def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
     """Create and initialize a Pythia instance from config."""
     pythia = pythia8mc.Pythia("", False)
 
-    # Apply process settings from card file or preset
-    if config.pythia_card is not None:
-        pythia.readFile(config.pythia_card)
-    else:
-        if config.process not in PROCESS_PRESETS:
-            raise ValueError(f"Unknown process '{config.process}'. Available: {list(PROCESS_PRESETS)}")
-        for setting in PROCESS_PRESETS[config.process]:
-            pythia.readString(setting)
+    # Apply process settings from card file
+    if config.pythia_card is None:
+        raise ValueError("pythia_card must be set (use resolve_card() to resolve short names)")
+    pythia.readFile(config.pythia_card)
 
     # Beam settings
     pythia.readString(f"Beams:eCM = {config.ecm}")

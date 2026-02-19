@@ -1,5 +1,5 @@
 # Pythia8 event generation settings
-process: qcd          # qcd, ttbar, zprime_tt
+pythia_card: qcd      # Built-in card name or path to a .cmnd file
 ecm: 13600.0          # Centre-of-mass energy [GeV]
 pt_hat_min: null       # pTHat minimum cut [GeV] (null = no cut)
 pt_hat_max: null       # pTHat maximum cut [GeV] (null = no cut)

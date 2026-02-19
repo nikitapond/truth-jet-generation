@@ -1,0 +1,5 @@
+! Z' -> ttbar at 3 TeV
+NewGaugeBoson:ffbar2gmZZprime = on
+Zprime:gmZmode = 3
+32:m0 = 3000
+32:onIfAny = 6

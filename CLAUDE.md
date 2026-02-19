@@ -12,22 +12,22 @@ TruthJets generates truth-level jet training data for ATLAS flavor-tagging ML mo
 # Setup environment (ALWAYS use [dev] to include pytest and other dev tools)
 uv venv && source .venv/bin/activate && uv pip install -e ".[dev]"
 
-# Generate events (exactly one of --process or --pythia-card is required)
-truthjets --process ttbar -n 100000 -o ttbar.h5
-truthjets --process qcd -n 1000000 -o qcd.h5
-truthjets --process zprime_tt -n 100000 -o zprime.h5
+# Generate events (--pythia-card accepts a built-in name or path to .cmnd file)
+truthjets --pythia-card ttbar -n 100000 -o ttbar.h5
+truthjets --pythia-card qcd -n 1000000 -o qcd.h5
+truthjets --pythia-card zprime_tt -n 100000 -o zprime.h5
 truthjets --pythia-card my_process.cmnd -n 100000 -o custom.h5
 
 # Large-R jets (auto-loads LargeRLabelModule for W/Z/H/top labeling)
-truthjets --pythia-card cards/z_qq.cmnd -R 1.0 -n 100000 -o z_jets.h5
-truthjets --pythia-card cards/zh_llbb.cmnd -R 1.0 -n 100000 -o zh_jets.h5
+truthjets --pythia-card z_qq -R 1.0 -n 100000 -o z_jets.h5
+truthjets --pythia-card zh_llbb -R 1.0 -n 100000 -o zh_jets.h5
 
 # Generate a pileup pool for later reuse
 generate-pu-pool -n 100000 -o pu_pool.h5
 
 # Use it with hard-scatter generation (accepts a file or directory of pool chunks)
-truthjets --process ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
-truthjets --process ttbar -n 100000 --pu 50 --pu-file /path/to/pool_chunks/ -o ttbar_pu.h5
+truthjets --pythia-card ttbar -n 100000 --pu 50 --pu-file pu_pool.h5 -o ttbar_pu.h5
+truthjets --pythia-card ttbar -n 100000 --pu 50 --pu-file /path/to/pool_chunks/ -o ttbar_pu.h5
 
 # Create a Virtual Dataset from multiple HDF5 files
 create-vds part_000.h5 part_001.h5 part_002.h5 -o combined.h5
@@ -46,7 +46,7 @@ create-vds /path/to/parts/ -o combined.h5
 # Fix with: uv pip install -e ".[dev]"
 
 # Benchmark pipeline stages
-truthjets --process ttbar -n 10000 -o ttbar.h5 --benchmark
+truthjets --pythia-card ttbar -n 10000 -o ttbar.h5 --benchmark
 
 # Plot output
 python scripts/plot_jets.py output.h5 -o plots.pdf
@@ -68,7 +68,7 @@ The pipeline flows: **Pythia8 event generation → jet clustering → flavor lab
 All source lives in `src/truthjets/`:
 
 - **`cli.py`** — Entry point (`truthjets` command). Parses args, supports YAML config or CLI flags, runs the batch processing loop.
-- **`config.py`** — Three dataclasses (`PythiaConfig`, `JetConfig`, `OutputConfig`) plus `PROCESS_PRESETS` mapping process names to Pythia `readString` commands. `PythiaConfig.pythia_card` allows pointing to a `.cmnd` file instead of a preset.
+- **`config.py`** — Three dataclasses (`PythiaConfig`, `JetConfig`, `OutputConfig`) plus `CARDS_DIR` and `resolve_card()` for resolving built-in card names (e.g. `ttbar`) or file paths to absolute `.cmnd` paths.
 - **`generate.py`** — `init_pythia()` and `generate_events()` iterator yielding batches as Awkward Arrays.
 - **`cluster.py`** — `extract_particles()` pulls final-state particles from events. `cluster_jets()` uses FastJet (antikt/kt/cambridge algorithms) with eta cuts. `compute_jet_kinematics()` derives pt/eta/phi/mass.
 - **`label.py`** — PDG ID classification (`is_b_hadron`, `is_c_hadron`, `is_tau_lepton`) and `label_jets()` via dR-matching with priority: b > c > tau > light. Labels: 0=light, 4=c, 5=b, 15=tau.
@@ -98,16 +98,16 @@ The `--modules` flag accepts a mix of built-in short names, YAML config files, a
 
 ```bash
 # Built-in short names (case-insensitive)
-truthjets --process ttbar -n 100000 -o out.h5 --modules softkiller vertexzfilter
+truthjets --pythia-card ttbar -n 100000 -o out.h5 --modules softkiller vertexzfilter
 
 # YAML config file (with init_args for custom parameters)
-truthjets --process ttbar -n 100000 -o out.h5 --modules pipeline.yaml
+truthjets --pythia-card ttbar -n 100000 -o out.h5 --modules pipeline.yaml
 
 # Import path (existing behavior)
-truthjets --process ttbar -n 100000 -o out.h5 --modules my_package.my_module:ClassName
+truthjets --pythia-card ttbar -n 100000 -o out.h5 --modules my_package.my_module:ClassName
 
 # Mix all three
-truthjets --process ttbar -n 100000 -o out.h5 --modules softkiller pipeline.yaml my_package:MyModule
+truthjets --pythia-card ttbar -n 100000 -o out.h5 --modules softkiller pipeline.yaml my_package:MyModule
 ```
 
 **Built-in short names:** `softkiller`, `vertexzfilter`, `hadronconelabel`, `largerlabel`
@@ -129,7 +129,7 @@ The legacy `--module` flag (repeatable import path) still works:
 
 ```bash
 # Legacy: explicit class name (repeatable)
-truthjets --process ttbar -n 100000 -o out.h5 --module my_package.my_module:ClassName
+truthjets --pythia-card ttbar -n 100000 -o out.h5 --module my_package.my_module:ClassName
 ```
 
 ### Writing a module
@@ -161,10 +161,16 @@ class MyModule(TruthJetModule):
 
 ## Pythia Cards
 
-Pre-built Pythia configuration cards live in `cards/`:
+All physics processes are configured via `.cmnd` card files shipped in `src/truthjets/cards/`. Use `--pythia-card <name>` with a built-in short name or a path to a custom `.cmnd` file.
 
-- **`cards/z_qq.cmnd`** — Boosted Z+jets with Z → qq (hadronic). `pTHatMin = 200`.
-- **`cards/zh_llbb.cmnd`** — ZH associated production with H → bb, Z → ll. `pTHatMin = 150`.
+**Built-in cards:**
+- **`ttbar`** — Top pair production (gg and qqbar channels).
+- **`qcd`** — Generic QCD hard processes.
+- **`zprime_tt`** — Z' → ttbar at 3 TeV.
+- **`z_qq`** — Boosted Z+jets with Z → qq (hadronic). `pTHatMin = 200`.
+- **`zh_llbb`** — ZH associated production with H → bb, Z → ll. `pTHatMin = 150`.
+
+`--process` and `--pythia-card` are aliases — both accept a built-in card name or a path to a `.cmnd` file.
 
 ## HDF5 Output Format
 
@@ -176,7 +182,7 @@ Pre-built Pythia configuration cards live in `cards/`:
 When using `bulk-generate`, always use `--vds` to get a clean output structure with a virtual dataset:
 
 ```bash
-bulk-generate --process ttbar -n 12500 --num-files 8 --parallel 4 --vds \
+bulk-generate --pythia-card ttbar -n 12500 --num-files 8 --parallel 4 --vds \
     -o /path/to/output/
 ```
 
@@ -186,11 +192,11 @@ For pileup runs, pre-generate the PU pool to save memory and time (allows more p
 
 ```bash
 # 1. Generate PU pool once
-truthjets --process ttbar -n 1 --pu 60 --pu-pre-gen 20000 --batch-size 1 -o /tmp/dummy.h5
+truthjets --pythia-card ttbar -n 1 --pu 60 --pu-pre-gen 20000 --batch-size 1 -o /tmp/dummy.h5
 # Pool saved as dummy_20000_pu_events.h5 in cwd
 
 # 2. Use pool for bulk generation
-bulk-generate --process ttbar --pu 60 --softkiller \
+bulk-generate --pythia-card ttbar --pu 60 --softkiller \
     --pu-file pu_pool_20k.h5 \
     -n 12500 --num-files 8 --parallel 4 --vds \
     -o /path/to/output/
@@ -207,7 +213,7 @@ Use `--benchmark` to print per-batch and summary timing for each pipeline stage:
 The `condor/` directory contains submit scripts for batch generation on CERN lxplus:
 
 - **`condor/generate_pu_pool.sh`** / **`condor/generate_pu_pool.sub`** — Pileup pool generation. Each job runs `generate-pu-pool` with a unique seed, producing one pool chunk.
-- **`condor/generate_jets.sh`** / **`condor/generate_jets.sub`** — Hard-scatter jet generation. Each job runs `truthjets` with a unique seed. Supports both `--process` presets and `--pythia-card` files.
+- **`condor/generate_jets.sh`** / **`condor/generate_jets.sub`** — Hard-scatter jet generation. Each job runs `truthjets` with a unique seed. Uses `--pythia-card` (accepts built-in names or paths).
 - **`condor/logs/`** — HTCondor stdout/stderr/log files (gitignored via `.gitkeep`).
 
 All config is passed at `condor_submit` time (no need to edit `.sub` files). Both wrappers handle the lxplus environment: source LCG_106, unset `PYTHIA8DATA`, activate venv.
