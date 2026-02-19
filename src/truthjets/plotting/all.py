@@ -1,13 +1,14 @@
 """Run all plot scripts and save outputs to a directory."""
+
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
 from truthjets.plotting import load_data, save_figs
+from truthjets.plotting.constituents import plot as plot_constituents
 from truthjets.plotting.events import plot as plot_events
 from truthjets.plotting.jets import plot as plot_jets
-from truthjets.plotting.constituents import plot as plot_constituents
 
 PLOTTERS = {
     "events.pdf": plot_events,
@@ -20,7 +21,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run all truth jet plot scripts")
     parser.add_argument("input", help="Input HDF5 file")
     parser.add_argument(
-        "-o", "--output-dir", default="plots",
+        "-o",
+        "--output-dir",
+        default="plots",
         help="Output directory for PDFs (default: plots/)",
     )
     args = parser.parse_args()

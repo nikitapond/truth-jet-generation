@@ -7,7 +7,8 @@ from pathlib import Path
 import awkward as ak
 import numpy as np
 
-from truthjets.cluster import cluster_jets, compute_jet_kinematics, extract_particles
+from truthjets.benchmark import Benchmark
+from truthjets.cluster import cluster_jets, extract_particles
 from truthjets.config import (
     JetConfig,
     OutputConfig,
@@ -16,7 +17,6 @@ from truthjets.config import (
     load_pythia_config,
 )
 from truthjets.generate import generate_events, generate_pileup_batch, init_pileup_pythia, init_pythia
-from truthjets.benchmark import Benchmark
 from truthjets.modules import (
     HadronConeExclLabelModule,
     LargeRLabelModule,
@@ -39,17 +39,17 @@ from truthjets.writer import HDF5Writer
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(
-        description="Generate truth-level jet training data"
-    )
+    parser = argparse.ArgumentParser(description="Generate truth-level jet training data")
 
     # Config files (override individual flags)
     parser.add_argument(
-        "--pythia-config", default=None,
+        "--pythia-config",
+        default=None,
         help="Path to Pythia YAML config file",
     )
     parser.add_argument(
-        "--jet-config", default=None,
+        "--jet-config",
+        default=None,
         help="Path to jet/output YAML config file",
     )
 
@@ -64,33 +64,36 @@ def parse_args(argv=None):
         default=None,
         help="Path to a Pythia command file (.cmnd)",
     )
-    parser.add_argument(
-        "--ecm", type=float, default=13600.0, help="Center-of-mass energy in GeV"
-    )
+    parser.add_argument("--ecm", type=float, default=13600.0, help="Center-of-mass energy in GeV")
     parser.add_argument("--pt-hat-min", type=float, default=None)
     parser.add_argument("--pt-hat-max", type=float, default=None)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
-        "--pu", type=float, default=None, metavar="MU",
+        "--pu",
+        type=float,
+        default=None,
+        metavar="MU",
         help="Mean number of pileup interactions (Poisson mu). Disabled by default.",
     )
     parser.add_argument(
-        "--pu-pre-gen", type=int, default=None, metavar="N",
+        "--pu-pre-gen",
+        type=int,
+        default=None,
+        metavar="N",
         help="Pre-generate N PU events upfront, save to file, then sample from pool.",
     )
     parser.add_argument(
-        "--pu-file", type=str, default=None, metavar="PATH",
+        "--pu-file",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="Load pre-generated PU pool from file (skip Pythia PU generation).",
     )
 
     # Jet settings
     parser.add_argument("-R", type=float, default=0.4, help="Jet radius")
-    parser.add_argument(
-        "--jet-pt-min", type=float, default=20.0, help="Minimum jet pT in GeV"
-    )
-    parser.add_argument(
-        "--jet-eta-max", type=float, default=2.5, help="Maximum jet |eta|"
-    )
+    parser.add_argument("--jet-pt-min", type=float, default=20.0, help="Minimum jet pT in GeV")
+    parser.add_argument("--jet-eta-max", type=float, default=2.5, help="Maximum jet |eta|")
     parser.add_argument(
         "--constituent-pt-min",
         type=float,
@@ -124,15 +127,9 @@ def parse_args(argv=None):
     )
 
     # Output settings
-    parser.add_argument(
-        "-o", "--output", default="jets.h5", help="Output HDF5 path"
-    )
-    parser.add_argument(
-        "-n", "--n-events", type=int, default=100_000, help="Number of events"
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=10_000, help="Events per batch"
-    )
+    parser.add_argument("-o", "--output", default="jets.h5", help="Output HDF5 path")
+    parser.add_argument("-n", "--n-events", type=int, default=100_000, help="Number of events")
+    parser.add_argument("--batch-size", type=int, default=10_000, help="Events per batch")
 
     # Pipeline modules
     parser.add_argument(
@@ -141,8 +138,7 @@ def parse_args(argv=None):
         default=[],
         metavar="IMPORT_PATH",
         help=(
-            "Pipeline module to load (repeatable). "
-            "Format: 'my_package.my_module' or 'my_package.my_module:ClassName'"
+            "Pipeline module to load (repeatable). Format: 'my_package.my_module' or 'my_package.my_module:ClassName'"
         ),
     )
     parser.add_argument(
@@ -340,12 +336,19 @@ def main(argv=None):
                 if pu_pool is not None:
                     pu_particles = sample_from_pool(pu_pool, total_pu, rng=pu_rng)
                     merged_particles = overlay_pileup(
-                        events, None, n_pu, rng=pu_rng, pu_particles=pu_particles,
+                        events,
+                        None,
+                        n_pu,
+                        rng=pu_rng,
+                        pu_particles=pu_particles,
                     )
                 else:
                     pu_events = generate_pileup_batch(pythia_pu, total_pu)
                     merged_particles = overlay_pileup(
-                        events, pu_events, n_pu, rng=pu_rng,
+                        events,
+                        pu_events,
+                        n_pu,
+                        rng=pu_rng,
                     )
             bench.stop("pileup_overlay")
 
@@ -366,9 +369,7 @@ def main(argv=None):
 
             # Cluster jets (with merged particles if pileup is active)
             bench.start("jet_clustering")
-            jets, constits, jet_kin = cluster_jets(
-                events, jet_config, particles=merged_particles
-            )
+            jets, constits, jet_kin = cluster_jets(events, jet_config, particles=merged_particles)
             bench.stop("jet_clustering")
 
             # Default labels (all light); labeling modules override via post_clustering
@@ -381,9 +382,7 @@ def main(argv=None):
             for mod in modules:
                 mod_name = type(mod).__name__
                 bench.start(f"post_clustering/{mod_name}")
-                result = mod.post_clustering(
-                    events, jets, constits, jet_kin, labels
-                )
+                result = mod.post_clustering(events, jets, constits, jet_kin, labels)
                 bench.stop(f"post_clustering/{mod_name}")
                 if result is not None:
                     if result.jet_kin is not None:
@@ -401,7 +400,11 @@ def main(argv=None):
             # Write to HDF5
             bench.start("h5_writing")
             writer.write_batch(
-                jet_kin, labels, constits, jet_kin.eta, jet_kin.phi,
+                jet_kin,
+                labels,
+                constits,
+                jet_kin.eta,
+                jet_kin.phi,
                 event_offset=event_offset,
                 extra_jet_data=batch_extra_jet_data or None,
                 extra_dataset_data=batch_extra_dataset_data or None,
@@ -412,10 +415,7 @@ def main(argv=None):
             bench.end_batch()
 
             elapsed = time.time() - t_batch
-            print(
-                f"Batch {batch_i + 1}: {writer.n_jets} jets total "
-                f"({elapsed:.1f}s this batch)"
-            )
+            print(f"Batch {batch_i + 1}: {writer.n_jets} jets total ({elapsed:.1f}s this batch)")
 
     total_time = time.time() - t0
     print(f"\nDone. {writer.n_jets} jets written to {output_config.output_path}")

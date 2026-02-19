@@ -49,9 +49,7 @@ class TestClusterJets:
 
         flat_jets = ak.flatten(jet_kin)
         assert len(flat_jets) == 1
-        np.testing.assert_allclose(
-            ak.to_numpy(flat_jets.pt)[0], 50.0, atol=0.1
-        )
+        np.testing.assert_allclose(ak.to_numpy(flat_jets.pt)[0], 50.0, atol=0.1)
 
     def test_collinear_particles_merge(self):
         """Two collinear particles should merge into one jet."""
@@ -68,16 +66,14 @@ class TestClusterJets:
 
         flat_jets = ak.flatten(jet_kin)
         assert len(flat_jets) == 1
-        np.testing.assert_allclose(
-            ak.to_numpy(flat_jets.pt)[0], 50.0, atol=0.5
-        )
+        np.testing.assert_allclose(ak.to_numpy(flat_jets.pt)[0], 50.0, atol=0.5)
 
     def test_separated_particles_make_two_jets(self):
         """Two well-separated hard particles should make two jets."""
         events = _make_mock_events(
             [
                 [
-                    (50.0, 0.0, 0.0, 50.0, 211),   # along +x
+                    (50.0, 0.0, 0.0, 50.0, 211),  # along +x
                     (0.0, 50.0, 0.0, 50.0, -211),  # along +y
                 ]
             ]
@@ -123,9 +119,7 @@ class TestClusterJets:
 
     def test_constituents_have_pdgid(self):
         """Constituents should carry pdgId field."""
-        events = _make_mock_events(
-            [[(50.0, 0.0, 0.0, 50.0, 211)]]
-        )
+        events = _make_mock_events([[(50.0, 0.0, 0.0, 50.0, 211)]])
         jet_config = JetConfig(pt_min=20.0, eta_max=2.5)
         jets, constits, jet_kin = cluster_jets(events, jet_config)
 

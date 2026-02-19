@@ -9,8 +9,7 @@ from truthjets.modules.bb_opening_angle import BBOpeningAngleModule
 
 
 class TestBBOpeningAngleModule:
-    def _make_mock_events(self, particle_ids, particle_eta, particle_phi,
-                          daughter1=None, daughter2=None):
+    def _make_mock_events(self, particle_ids, particle_eta, particle_phi, daughter1=None, daughter2=None):
         """Create a minimal mock events structure with given particles.
 
         By default all particles have no daughters (d1=d2=0), meaning
@@ -67,9 +66,7 @@ class TestBBOpeningAngleModule:
         # Place two b-hadrons at known positions
         b1_eta, b1_phi = 0.5, 0.3
         b2_eta, b2_phi = 0.8, 0.6
-        events = self._make_mock_events(
-            [511, 521], [b1_eta, b2_eta], [b1_phi, b2_phi]
-        )
+        events = self._make_mock_events([511, 521], [b1_eta, b2_eta], [b1_phi, b2_phi])
         jet_eta = ak.Array([[0.6]])
         jet_phi = ak.Array([[0.4]])
 
@@ -114,9 +111,7 @@ class TestBBOpeningAngleModule:
 
     def test_three_b_hadrons_gives_nan(self):
         """Three b-hadrons in cone -> NaN (ambiguous)."""
-        events = self._make_mock_events(
-            [511, 521, 531], [0.5, 0.6, 0.4], [0.5, 0.6, 0.4]
-        )
+        events = self._make_mock_events([511, 521, 531], [0.5, 0.6, 0.4], [0.5, 0.6, 0.4])
         jet_eta = ak.Array([[0.5]])
         jet_phi = ak.Array([[0.5]])
 
@@ -171,10 +166,8 @@ class TestBBOpeningAngleModule:
 
         events = self._make_mock_events(
             particle_ids=[523, 513, 521, 22, 511, 22],
-            particle_eta=[b_star_eta, b_star2_eta, b_final1_eta,
-                          gamma1_eta, b_final2_eta, gamma2_eta],
-            particle_phi=[b_star_phi, b_star2_phi, b_final1_phi,
-                          gamma1_phi, b_final2_phi, gamma2_phi],
+            particle_eta=[b_star_eta, b_star2_eta, b_final1_eta, gamma1_eta, b_final2_eta, gamma2_eta],
+            particle_phi=[b_star_phi, b_star2_phi, b_final1_phi, gamma1_phi, b_final2_phi, gamma2_phi],
             # B**(523) at idx=0 -> daughters at idx=2,3
             # B**(513) at idx=1 -> daughters at idx=4,5
             # B(521) at idx=2 -> no daughters (d1=d2=0)
@@ -205,9 +198,7 @@ class TestBBOpeningAngleModule:
         """Two jets: first has 2 b-hadrons in cone, second has none."""
         b1_eta, b1_phi = 0.5, 0.3
         b2_eta, b2_phi = 0.8, 0.6
-        events = self._make_mock_events(
-            [511, 521], [b1_eta, b2_eta], [b1_phi, b2_phi]
-        )
+        events = self._make_mock_events([511, 521], [b1_eta, b2_eta], [b1_phi, b2_phi])
         # First jet near the b-hadrons, second jet far away
         jet_eta = ak.Array([[0.6, -2.0]])
         jet_phi = ak.Array([[0.4, -2.0]])

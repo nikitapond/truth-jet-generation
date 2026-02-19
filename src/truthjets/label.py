@@ -13,11 +13,7 @@ def is_b_hadron(pdg_id):
     or ten-thousands place.
     """
     aid = np.abs(pdg_id)
-    return (
-        ((aid // 100) % 10 == 5)
-        | ((aid // 1000) % 10 == 5)
-        | ((aid // 10000) % 10 == 5)
-    )
+    return ((aid // 100) % 10 == 5) | ((aid // 1000) % 10 == 5) | ((aid // 10000) % 10 == 5)
 
 
 def is_c_hadron(pdg_id):
@@ -27,11 +23,7 @@ def is_c_hadron(pdg_id):
     or ten-thousands place (and are NOT b-hadrons).
     """
     aid = np.abs(pdg_id)
-    has_c = (
-        ((aid // 100) % 10 == 4)
-        | ((aid // 1000) % 10 == 4)
-        | ((aid // 10000) % 10 == 4)
-    )
+    has_c = ((aid // 100) % 10 == 4) | ((aid // 1000) % 10 == 4) | ((aid // 10000) % 10 == 4)
     return has_c & ~is_b_hadron(pdg_id)
 
 
@@ -158,12 +150,8 @@ def label_jets(events, jet_eta, jet_phi, R):
             continue
 
         # Cartesian product: (events x jets) x (events x flavor_particles)
-        jet_eta_bcast, flav_eta_bcast = ak.unzip(
-            ak.cartesian([jet_eta, flavor_eta], nested=True)
-        )
-        jet_phi_bcast, flav_phi_bcast = ak.unzip(
-            ak.cartesian([jet_phi, flavor_phi], nested=True)
-        )
+        jet_eta_bcast, flav_eta_bcast = ak.unzip(ak.cartesian([jet_eta, flavor_eta], nested=True))
+        jet_phi_bcast, flav_phi_bcast = ak.unzip(ak.cartesian([jet_phi, flavor_phi], nested=True))
 
         dr = _delta_r(jet_eta_bcast, jet_phi_bcast, flav_eta_bcast, flav_phi_bcast)
 

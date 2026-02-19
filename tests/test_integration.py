@@ -41,9 +41,7 @@ def output_file():
         for events in generate_events(pythia, n_events=100, batch_size=50):
             jets, constits, jet_kin = cluster_jets(events, jet_config)
             labels = label_jets(events, jet_kin.eta, jet_kin.phi, jet_config.R)
-            writer.write_batch(
-                jet_kin, labels, constits, jet_kin.eta, jet_kin.phi
-            )
+            writer.write_batch(jet_kin, labels, constits, jet_kin.eta, jet_kin.phi)
 
     yield path
     os.unlink(path)
@@ -153,13 +151,9 @@ def output_file_pu():
             pu_events = generate_pileup_batch(pythia_pu, total_pu)
             merged = overlay_pileup(events, pu_events, n_pu)
 
-            jets, constits, jet_kin = cluster_jets(
-                events, jet_config, particles=merged
-            )
+            jets, constits, jet_kin = cluster_jets(events, jet_config, particles=merged)
             labels = label_jets(events, jet_kin.eta, jet_kin.phi, jet_config.R)
-            writer.write_batch(
-                jet_kin, labels, constits, jet_kin.eta, jet_kin.phi
-            )
+            writer.write_batch(jet_kin, labels, constits, jet_kin.eta, jet_kin.phi)
 
     yield path
     os.unlink(path)

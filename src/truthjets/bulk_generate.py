@@ -8,6 +8,7 @@ Example:
 This will produce output/ttbar/ttbar_000.h5 through ttbar_009.h5, each with
 100k events and a unique Pythia seed.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,11 +25,16 @@ from truthjets.h5utils import create_vds
 def run_job(job: dict) -> dict:
     """Run a single truthjets generation job as a subprocess."""
     cmd = [
-        sys.executable, "-m", "truthjets.cli",
+        sys.executable,
+        "-m",
+        "truthjets.cli",
         *job["source_args"],
-        "-n", str(job["n_events"]),
-        "--seed", str(job["seed"]),
-        "-o", str(job["output"]),
+        "-n",
+        str(job["n_events"]),
+        "--seed",
+        str(job["seed"]),
+        "-o",
+        str(job["output"]),
     ]
     # Forward any extra CLI flags
     cmd.extend(job.get("extra_args", []))
@@ -63,16 +69,15 @@ def run_job(job: dict) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Bulk-generate truth jet HDF5 files in parallel"
-    )
+    parser = argparse.ArgumentParser(description="Bulk-generate truth jet HDF5 files in parallel")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
         "--process",
         help="Physics process preset (e.g. ttbar, qcd, zprime_tt)",
     )
     source.add_argument(
-        "--pythia-card", type=Path,
+        "--pythia-card",
+        type=Path,
         help="Path to a Pythia command file (.cmnd)",
     )
     parser.add_argument(
@@ -80,34 +85,49 @@ def main():
         help="File name prefix (default: process name or pythia card stem)",
     )
     parser.add_argument(
-        "-o", "--output-dir", required=True, type=Path,
+        "-o",
+        "--output-dir",
+        required=True,
+        type=Path,
         help="Output directory for HDF5 files (used as staging dir if --final-dir is set)",
     )
     parser.add_argument(
-        "--final-dir", type=Path, default=None,
+        "--final-dir",
+        type=Path,
+        default=None,
         help="Final directory to move completed files to (e.g. HDD). "
-             "Files are generated in --output-dir (e.g. SSD) then moved.",
+        "Files are generated in --output-dir (e.g. SSD) then moved.",
     )
     parser.add_argument(
-        "-n", "--events-per-file", type=int, required=True,
+        "-n",
+        "--events-per-file",
+        type=int,
+        required=True,
         help="Number of events per file",
     )
     parser.add_argument(
-        "--num-files", type=int, required=True,
+        "--num-files",
+        type=int,
+        required=True,
         help="Number of files to generate",
     )
     parser.add_argument(
-        "--parallel", type=int, default=1,
+        "--parallel",
+        type=int,
+        default=1,
         help="Number of parallel processes (default: 1)",
     )
     parser.add_argument(
-        "--seed-start", type=int, default=1,
+        "--seed-start",
+        type=int,
+        default=1,
         help="Starting seed; file i gets seed = seed_start + i (default: 1)",
     )
     parser.add_argument(
-        "--vds", action="store_true",
+        "--vds",
+        action="store_true",
         help="Create an HDF5 Virtual Dataset (vds.h5) concatenating all part files. "
-             "Part files are placed in a parts/ subdirectory.",
+        "Part files are placed in a parts/ subdirectory.",
     )
 
     args, extra = parser.parse_known_args()
@@ -152,16 +172,18 @@ def main():
     jobs = []
     for i in range(args.num_files):
         output_path = staging_dir / f"{prefix}_{i:03d}.h5"
-        jobs.append({
-            "index": i,
-            "total": args.num_files,
-            "source_args": source_args,
-            "n_events": args.events_per_file,
-            "seed": args.seed_start + i,
-            "output": output_path,
-            "final_dir": str(job_final_dir) if job_final_dir else None,
-            "extra_args": extra,
-        })
+        jobs.append(
+            {
+                "index": i,
+                "total": args.num_files,
+                "source_args": source_args,
+                "n_events": args.events_per_file,
+                "seed": args.seed_start + i,
+                "output": output_path,
+                "final_dir": str(job_final_dir) if job_final_dir else None,
+                "extra_args": extra,
+            }
+        )
 
     print(f"Generating {args.num_files} files, {args.events_per_file} events each")
     print(source_label)

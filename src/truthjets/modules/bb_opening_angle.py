@@ -33,9 +33,7 @@ class BBOpeningAngleModule(TruthJetModule):
 
     def init(self, jet_config: JetConfig) -> None:
         if jet_config.R <= 0.4:
-            raise ValueError(
-                "BBOpeningAngleModule requires R > 0.4 (large-R jets)"
-            )
+            raise ValueError("BBOpeningAngleModule requires R > 0.4 (large-R jets)")
         self.R = jet_config.R
 
     def extra_jet_fields(self):
@@ -51,7 +49,6 @@ class BBOpeningAngleModule(TruthJetModule):
         p_mag = np.sqrt(px**2 + py**2 + pz**2)
         prt_eta = safe_eta(pz, p_mag)
         prt_phi = np.arctan2(py, px)
-        prt_id = particles.id
 
         # Filter to weakly-decaying b-hadrons only (no excited states)
         b_mask = final_b_hadron_mask(particles)

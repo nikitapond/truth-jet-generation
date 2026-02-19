@@ -1,4 +1,5 @@
 """Event-level distribution plots."""
+
 from __future__ import annotations
 
 import argparse
@@ -94,8 +95,14 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
         ax.legend()
     else:
         ax.text(
-            0.5, 0.5, "No pileup present",
-            transform=ax.transAxes, ha="center", va="center", fontsize=14, color="gray",
+            0.5,
+            0.5,
+            "No pileup present",
+            transform=ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=14,
+            color="gray",
         )
         ax.set_title("HS vs PU jets per event")
 
@@ -160,8 +167,10 @@ def plot(jets: np.ndarray, constit: np.ndarray) -> list[plt.Figure]:
     # 8. Leading jet pT vs HT (2D)
     ax = axes2[1, 1]
     h = ax.hist2d(
-        ht_per_event / 1e3, lead_pt_per_event / 1e3,
-        bins=50, cmin=1,
+        ht_per_event / 1e3,
+        lead_pt_per_event / 1e3,
+        bins=50,
+        cmin=1,
     )
     fig2.colorbar(h[3], ax=ax, label="Events")
     ax.set_xlabel("HT [TeV]")

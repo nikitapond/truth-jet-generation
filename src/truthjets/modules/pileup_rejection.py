@@ -21,11 +21,7 @@ class SoftKillerModule(TruthJetModule):
         self._grid_size = grid_size
 
     def init(self, jet_config: JetConfig) -> None:
-        self.grid_size = (
-            self._grid_size
-            if self._grid_size is not None
-            else jet_config.softkiller_grid
-        )
+        self.grid_size = self._grid_size if self._grid_size is not None else jet_config.softkiller_grid
 
     def pre_clustering(self, events, particles):
         if particles is None:
@@ -49,11 +45,7 @@ class VertexZFilterModule(TruthJetModule):
         self._max_dz = max_dz
 
     def init(self, jet_config: JetConfig) -> None:
-        self.max_dz = (
-            self._max_dz
-            if self._max_dz is not None
-            else jet_config.max_dz
-        )
+        self.max_dz = self._max_dz if self._max_dz is not None else jet_config.max_dz
 
     def post_clustering(self, events, jets, constituents, jet_kin, labels):
         mask = vertex_z_filter(constituents, jet_kin, self.max_dz)

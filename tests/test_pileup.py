@@ -219,14 +219,8 @@ class TestSampleFromPool:
         unrotated = pool[indices]
 
         # pT = sqrt(px^2 + py^2) should be preserved
-        pt_orig = np.sqrt(
-            ak.to_numpy(ak.flatten(unrotated.px)) ** 2
-            + ak.to_numpy(ak.flatten(unrotated.py)) ** 2
-        )
-        pt_rot = np.sqrt(
-            ak.to_numpy(ak.flatten(sampled.px)) ** 2
-            + ak.to_numpy(ak.flatten(sampled.py)) ** 2
-        )
+        pt_orig = np.sqrt(ak.to_numpy(ak.flatten(unrotated.px)) ** 2 + ak.to_numpy(ak.flatten(unrotated.py)) ** 2)
+        pt_rot = np.sqrt(ak.to_numpy(ak.flatten(sampled.px)) ** 2 + ak.to_numpy(ak.flatten(sampled.py)) ** 2)
         np.testing.assert_allclose(pt_orig, pt_rot, atol=1e-5)
 
     def test_phi_rotation_preserves_pz(self):
@@ -255,7 +249,6 @@ class TestSamplePhiRotationUniformity:
     def test_phi_angles_are_uniform(self):
         """Rotation angles should be roughly uniform in [0, 2pi)."""
         # Use a pool with known px, py so we can recover theta
-        n_pool = 1
         pool = ak.zip(
             {
                 "px": ak.Array([[1.0]]),
@@ -279,9 +272,7 @@ class TestSamplePhiRotationUniformity:
         expected = n_samples / 8
         # Chi-squared-like: each bin within 20% of expected
         for count in hist:
-            assert abs(count - expected) / expected < 0.2, (
-                f"Bin count {count} too far from expected {expected}"
-            )
+            assert abs(count - expected) / expected < 0.2, f"Bin count {count} too far from expected {expected}"
 
 
 class TestOverlayWithPuParticles:

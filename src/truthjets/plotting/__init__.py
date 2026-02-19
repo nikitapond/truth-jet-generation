@@ -1,4 +1,5 @@
 """Shared plotting utilities for truthjets."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,12 +10,24 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 LABEL_MAP = {
-    0: "light", 4: "c-jet", 5: "b-jet", 15: r"$\tau$-jet",
-    6: "top", 23: "Z", 24: "W", 25: "Higgs",
+    0: "light",
+    4: "c-jet",
+    5: "b-jet",
+    15: r"$\tau$-jet",
+    6: "top",
+    23: "Z",
+    24: "W",
+    25: "Higgs",
 }
 LABEL_COLORS = {
-    0: "C0", 4: "C1", 5: "C2", 15: "C3",
-    6: "C3", 23: "C1", 24: "C4", 25: "C2",
+    0: "C0",
+    4: "C1",
+    5: "C2",
+    15: "C3",
+    6: "C3",
+    23: "C1",
+    24: "C4",
+    25: "C2",
 }
 
 
@@ -51,9 +64,7 @@ def group_by_event(jets: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray
     splits : indices to split flat jet array by event
     counts : number of jets per event
     """
-    event_ids, inverse, counts = np.unique(
-        jets["event_id"], return_inverse=True, return_counts=True
-    )
+    event_ids, inverse, counts = np.unique(jets["event_id"], return_inverse=True, return_counts=True)
     splits = np.cumsum(counts)[:-1]
     return event_ids, splits, counts
 
@@ -76,7 +87,9 @@ def flavor_profile(ax, x, y, bins, labels, unique_labels):
             sel = mask & (x >= lo) & (x < hi)
             means.append(np.mean(y[sel]) if np.any(sel) else np.nan)
         ax.plot(
-            centers, means, "o-",
+            centers,
+            means,
+            "o-",
             color=LABEL_COLORS.get(lab, "gray"),
             label=LABEL_MAP.get(lab, str(lab)),
             markersize=3,

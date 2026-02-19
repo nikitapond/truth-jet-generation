@@ -36,10 +36,10 @@ _RESONANCE_PDGIDS = {
 
 # Labels use PDG IDs; priority order (last write wins): W -> Z -> H -> top
 _LARGE_R_PRIORITY = [
-    (24, 24),   # W
-    (23, 23),   # Z
-    (25, 25),   # H
-    (6, 6),     # top
+    (24, 24),  # W
+    (23, 23),  # Z
+    (25, 25),  # H
+    (6, 6),  # top
 ]
 
 
@@ -104,12 +104,8 @@ def label_large_r_jets(events, jet_eta, jet_phi, R):
             continue
 
         # Cartesian product: (events x jets) x (events x resonance_particles)
-        jet_eta_bcast, res_eta_bcast = ak.unzip(
-            ak.cartesian([jet_eta, res_eta], nested=True)
-        )
-        jet_phi_bcast, res_phi_bcast = ak.unzip(
-            ak.cartesian([jet_phi, res_phi], nested=True)
-        )
+        jet_eta_bcast, res_eta_bcast = ak.unzip(ak.cartesian([jet_eta, res_eta], nested=True))
+        jet_phi_bcast, res_phi_bcast = ak.unzip(ak.cartesian([jet_phi, res_phi], nested=True))
 
         dr = _delta_r(jet_eta_bcast, jet_phi_bcast, res_eta_bcast, res_phi_bcast)
 
