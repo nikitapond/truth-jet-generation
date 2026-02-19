@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -28,9 +26,7 @@ class TestBuiltinModules:
     def test_all_values_are_importable(self):
         for name, path in BUILTIN_MODULES.items():
             mod = load_module(path)
-            assert isinstance(mod, TruthJetModule), (
-                f"Built-in '{name}' did not produce a TruthJetModule"
-            )
+            assert isinstance(mod, TruthJetModule), f"Built-in '{name}' did not produce a TruthJetModule"
 
 
 class TestLoadModuleInitArgs:
@@ -65,7 +61,8 @@ class TestLoadModulesFromYaml:
 
     def test_valid_yaml(self, tmp_path):
         yaml_file = tmp_path / "modules.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - class_path: truthjets.modules.pileup_rejection:SoftKillerModule
               init_args:
                 grid_size: 0.6
@@ -73,7 +70,8 @@ class TestLoadModulesFromYaml:
             - class_path: truthjets.modules.pileup_rejection:VertexZFilterModule
               init_args:
                 max_dz: 3.0
-        """))
+        """)
+        )
 
         modules = load_modules_from_yaml(yaml_file)
         assert len(modules) == 2
@@ -84,9 +82,11 @@ class TestLoadModulesFromYaml:
 
     def test_valid_yaml_no_init_args(self, tmp_path):
         yaml_file = tmp_path / "modules.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - class_path: truthjets.modules.pileup_rejection:SoftKillerModule
-        """))
+        """)
+        )
 
         modules = load_modules_from_yaml(yaml_file)
         assert len(modules) == 1
@@ -102,10 +102,12 @@ class TestLoadModulesFromYaml:
 
     def test_missing_class_path(self, tmp_path):
         yaml_file = tmp_path / "bad.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - init_args:
                 grid_size: 0.6
-        """))
+        """)
+        )
 
         with pytest.raises(ValueError, match="'class_path' key"):
             load_modules_from_yaml(yaml_file)
@@ -119,9 +121,11 @@ class TestLoadModulesFromYaml:
 
     def test_yml_extension(self, tmp_path):
         yaml_file = tmp_path / "modules.yml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - class_path: truthjets.modules.pileup_rejection:SoftKillerModule
-        """))
+        """)
+        )
 
         modules = load_modules_from_yaml(yaml_file)
         assert len(modules) == 1
@@ -141,19 +145,19 @@ class TestResolveModuleSpecs:
         assert isinstance(modules[0], SoftKillerModule)
 
     def test_import_path(self):
-        modules = resolve_module_specs(
-            ["truthjets.modules.pileup_rejection:VertexZFilterModule"]
-        )
+        modules = resolve_module_specs(["truthjets.modules.pileup_rejection:VertexZFilterModule"])
         assert len(modules) == 1
         assert isinstance(modules[0], VertexZFilterModule)
 
     def test_yaml_file(self, tmp_path):
         yaml_file = tmp_path / "mods.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - class_path: truthjets.modules.pileup_rejection:SoftKillerModule
               init_args:
                 grid_size: 0.8
-        """))
+        """)
+        )
 
         modules = resolve_module_specs([str(yaml_file)])
         assert len(modules) == 1
@@ -162,17 +166,21 @@ class TestResolveModuleSpecs:
 
     def test_mixed_specs(self, tmp_path):
         yaml_file = tmp_path / "mods.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             - class_path: truthjets.modules.pileup_rejection:VertexZFilterModule
               init_args:
                 max_dz: 5.0
-        """))
+        """)
+        )
 
-        modules = resolve_module_specs([
-            "softkiller",
-            str(yaml_file),
-            "truthjets.modules.label:HadronConeExclLabelModule",
-        ])
+        modules = resolve_module_specs(
+            [
+                "softkiller",
+                str(yaml_file),
+                "truthjets.modules.label:HadronConeExclLabelModule",
+            ]
+        )
         assert len(modules) == 3
         assert isinstance(modules[0], SoftKillerModule)
         assert isinstance(modules[1], VertexZFilterModule)

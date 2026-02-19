@@ -7,7 +7,6 @@ from truthjets.config import JetConfig
 from truthjets.modules.pileup_rejection import SoftKillerModule, VertexZFilterModule
 from truthjets.pileup_rejection import softkiller
 
-
 # ---------------------------------------------------------------------------
 # SoftKillerModule
 # ---------------------------------------------------------------------------
@@ -96,13 +95,15 @@ class TestVertexZFilterModule:
             constit_list.append(jet_constit)
 
         constituents = ak.Array([constit_list])
-        jet_kin = ak.zip({
-            "pt": ak.Array([rng.uniform(20, 200, n_jets).tolist()]),
-            "eta": ak.Array([rng.uniform(-2.5, 2.5, n_jets).tolist()]),
-            "phi": ak.Array([rng.uniform(-np.pi, np.pi, n_jets).tolist()]),
-            "mass": ak.Array([rng.uniform(0, 20, n_jets).tolist()]),
-            "energy": ak.Array([rng.uniform(50, 500, n_jets).tolist()]),
-        })
+        jet_kin = ak.zip(
+            {
+                "pt": ak.Array([rng.uniform(20, 200, n_jets).tolist()]),
+                "eta": ak.Array([rng.uniform(-2.5, 2.5, n_jets).tolist()]),
+                "phi": ak.Array([rng.uniform(-np.pi, np.pi, n_jets).tolist()]),
+                "mass": ak.Array([rng.uniform(0, 20, n_jets).tolist()]),
+                "energy": ak.Array([rng.uniform(50, 500, n_jets).tolist()]),
+            }
+        )
         jets = jet_kin  # placeholder
         labels = ak.zeros_like(jet_kin.pt, dtype=np.int32)
         return jets, constituents, jet_kin, labels

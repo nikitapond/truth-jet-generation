@@ -52,6 +52,15 @@ truthjets --process ttbar -n 10000 -o ttbar.h5 --benchmark
 python scripts/plot_jets.py output.h5 -o plots.pdf
 ```
 
+## CI
+
+GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push to `main` and all PRs:
+
+- **lint** — `ruff check` and `ruff format --check` on `src/` and `tests/`
+- **test** — `pytest` across Python 3.10/3.11/3.12 (skips `test_pu_closure.py`)
+
+Run linting locally: `ruff check src/ tests/` and `ruff format --check src/ tests/`. Auto-fix with `ruff check --fix` and `ruff format`.
+
 ## Architecture
 
 The pipeline flows: **Pythia8 event generation → jet clustering → flavor labeling → HDF5 writing**, orchestrated by the CLI in batches for memory efficiency.

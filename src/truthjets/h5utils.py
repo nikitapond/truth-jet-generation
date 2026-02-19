@@ -1,4 +1,5 @@
 """Shared HDF5 utilities for truthjets."""
+
 from __future__ import annotations
 
 import argparse
@@ -48,11 +49,12 @@ def create_vds(part_files: list[Path], output_path: Path) -> None:
             offset = 0
             for rel_path, size in zip(rel_parts, sizes):
                 src = h5py.VirtualSource(
-                    str(rel_path), ds_name,
+                    str(rel_path),
+                    ds_name,
                     shape=(size, *info["shape_suffix"]),
                     dtype=info["dtype"],
                 )
-                layout[offset:offset + size] = src
+                layout[offset : offset + size] = src
                 offset += size
 
             out.create_virtual_dataset(ds_name, layout)
@@ -66,15 +68,17 @@ def create_vds(part_files: list[Path], output_path: Path) -> None:
 
 def main():
     """CLI entry point for creating HDF5 Virtual Datasets."""
-    parser = argparse.ArgumentParser(
-        description="Create an HDF5 Virtual Dataset concatenating part files"
-    )
+    parser = argparse.ArgumentParser(description="Create an HDF5 Virtual Dataset concatenating part files")
     parser.add_argument(
-        "inputs", nargs="+",
+        "inputs",
+        nargs="+",
         help="Input HDF5 files or a single directory containing *.h5 files",
     )
     parser.add_argument(
-        "-o", "--output", required=True, type=Path,
+        "-o",
+        "--output",
+        required=True,
+        type=Path,
         help="Output VDS file path",
     )
     args = parser.parse_args()

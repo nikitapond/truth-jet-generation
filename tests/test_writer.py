@@ -18,28 +18,16 @@ class TestHDF5Writer:
         rng = np.random.default_rng(42)
         jet_kin = ak.zip(
             {
-                "pt": ak.Array(
-                    rng.uniform(20, 200, (n_events, n_jets_per_event)).tolist()
-                ),
-                "eta": ak.Array(
-                    rng.uniform(-2.5, 2.5, (n_events, n_jets_per_event)).tolist()
-                ),
-                "phi": ak.Array(
-                    rng.uniform(-np.pi, np.pi, (n_events, n_jets_per_event)).tolist()
-                ),
-                "mass": ak.Array(
-                    rng.uniform(0, 20, (n_events, n_jets_per_event)).tolist()
-                ),
-                "energy": ak.Array(
-                    rng.uniform(50, 500, (n_events, n_jets_per_event)).tolist()
-                ),
+                "pt": ak.Array(rng.uniform(20, 200, (n_events, n_jets_per_event)).tolist()),
+                "eta": ak.Array(rng.uniform(-2.5, 2.5, (n_events, n_jets_per_event)).tolist()),
+                "phi": ak.Array(rng.uniform(-np.pi, np.pi, (n_events, n_jets_per_event)).tolist()),
+                "mass": ak.Array(rng.uniform(0, 20, (n_events, n_jets_per_event)).tolist()),
+                "energy": ak.Array(rng.uniform(50, 500, (n_events, n_jets_per_event)).tolist()),
             }
         )
 
         # Labels
-        labels = ak.Array(
-            rng.choice([0, 4, 5, 15], (n_events, n_jets_per_event)).tolist()
-        )
+        labels = ak.Array(rng.choice([0, 4, 5, 15], (n_events, n_jets_per_event)).tolist())
 
         # Constituents (events x jets x variable constituents)
         # Use list-of-records format matching fastjet output
@@ -76,9 +64,7 @@ class TestHDF5Writer:
 
         try:
             with HDF5Writer(path, jet_config) as writer:
-                writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi)
 
             n_total_jets = int(ak.sum(ak.num(jet_kin.pt)))
 
@@ -118,12 +104,8 @@ class TestHDF5Writer:
         try:
             with HDF5Writer(path, jet_config) as writer:
                 for _ in range(3):
-                    jet_kin, labels, constits = self._make_test_data(
-                        n_jets_per_event=2, n_events=2
-                    )
-                    writer.write_batch(
-                        jet_kin, labels, constits, jet_kin.eta, jet_kin.phi
-                    )
+                    jet_kin, labels, constits = self._make_test_data(n_jets_per_event=2, n_events=2)
+                    writer.write_batch(jet_kin, labels, constits, jet_kin.eta, jet_kin.phi)
                 assert writer.n_jets == 12  # 3 batches * 2 events * 2 jets
 
             with h5py.File(path, "r") as f:
@@ -153,9 +135,7 @@ class TestHDF5Writer:
                 )
                 labels = ak.Array([[]])
                 constits = ak.Array([[]])
-                writer.write_batch(
-                    jet_kin, labels, constits, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constits, jet_kin.eta, jet_kin.phi)
                 assert writer.n_jets == 0
         finally:
             os.unlink(path)
@@ -170,9 +150,7 @@ class TestHDF5Writer:
 
         try:
             with HDF5Writer(path, jet_config) as writer:
-                writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi)
 
             with h5py.File(path, "r") as f:
                 # pt_frac_pu in jets
@@ -218,9 +196,7 @@ class TestHDF5Writer:
 
         try:
             with HDF5Writer(path, jet_config) as writer:
-                writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi)
 
             with h5py.File(path, "r") as f:
                 pt_frac = f["jets"]["pt_frac_pu"][0]
@@ -267,9 +243,7 @@ class TestHDF5Writer:
 
         try:
             with HDF5Writer(path, jet_config) as writer:
-                writer.write_batch(
-                    jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi
-                )
+                writer.write_batch(jet_kin, labels, constituents, jet_kin.eta, jet_kin.phi)
 
             with h5py.File(path, "r") as f:
                 pt_vals = f["constituents"]["pt"][0]

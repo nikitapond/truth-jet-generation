@@ -155,28 +155,20 @@ def load_module(
         mod = importlib.import_module(module_path)
         cls = getattr(mod, class_name, None)
         if cls is None:
-            raise ImportError(
-                f"Class '{class_name}' not found in '{module_path}'"
-            )
+            raise ImportError(f"Class '{class_name}' not found in '{module_path}'")
         if not (inspect.isclass(cls) and issubclass(cls, TruthJetModule)):
-            raise TypeError(
-                f"'{class_name}' is not a TruthJetModule subclass"
-            )
+            raise TypeError(f"'{class_name}' is not a TruthJetModule subclass")
         return cls(**kwargs)
 
     mod = importlib.import_module(import_path)
     subclasses = [
         obj
         for _, obj in inspect.getmembers(mod, inspect.isclass)
-        if issubclass(obj, TruthJetModule)
-        and obj is not TruthJetModule
-        and obj.__module__ == mod.__name__
+        if issubclass(obj, TruthJetModule) and obj is not TruthJetModule and obj.__module__ == mod.__name__
     ]
 
     if len(subclasses) == 0:
-        raise ImportError(
-            f"No TruthJetModule subclass found in '{import_path}'"
-        )
+        raise ImportError(f"No TruthJetModule subclass found in '{import_path}'")
     if len(subclasses) > 1:
         names = [c.__name__ for c in subclasses]
         raise ImportError(
@@ -213,17 +205,13 @@ def load_modules_from_yaml(path: str | Path) -> list[TruthJetModule]:
 
     if not isinstance(data, list):
         raise ValueError(
-            f"YAML module config '{path}' must contain a list of module "
-            f"entries, got {type(data).__name__}"
+            f"YAML module config '{path}' must contain a list of module entries, got {type(data).__name__}"
         )
 
     modules = []
     for i, entry in enumerate(data):
         if not isinstance(entry, dict) or "class_path" not in entry:
-            raise ValueError(
-                f"Entry {i} in '{path}' must be a dict with a 'class_path' key, "
-                f"got: {entry!r}"
-            )
+            raise ValueError(f"Entry {i} in '{path}' must be a dict with a 'class_path' key, got: {entry!r}")
         class_path = entry["class_path"]
         init_args = entry.get("init_args")
         modules.append(load_module(class_path, init_args=init_args))
@@ -305,8 +293,7 @@ def validate_modules(modules: list[TruthJetModule]) -> None:
         for field_name, _ in mod.extra_jet_fields():
             if field_name in builtin_jet_fields:
                 raise ValueError(
-                    f"Module '{mod_name}' declares extra jet field "
-                    f"'{field_name}' which conflicts with a built-in field"
+                    f"Module '{mod_name}' declares extra jet field '{field_name}' which conflicts with a built-in field"
                 )
             if field_name in seen_fields:
                 raise ValueError(
@@ -319,8 +306,7 @@ def validate_modules(modules: list[TruthJetModule]) -> None:
         for ds_name in mod.extra_datasets():
             if ds_name in builtin_datasets:
                 raise ValueError(
-                    f"Module '{mod_name}' declares extra dataset "
-                    f"'{ds_name}' which conflicts with a built-in dataset"
+                    f"Module '{mod_name}' declares extra dataset '{ds_name}' which conflicts with a built-in dataset"
                 )
             if ds_name in seen_datasets:
                 raise ValueError(
