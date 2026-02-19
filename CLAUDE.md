@@ -193,6 +193,16 @@ Memory note: without a pre-generated pool, each worker generates its own PU even
 
 Use `--benchmark` to print per-batch and summary timing for each pipeline stage: `event_generation`, `pileup_overlay`, `pre_clustering`, `jet_clustering`, `post_clustering`, `h5_writing`. Stages that don't fire (e.g. pileup when `--pu` is not set) are omitted from output.
 
+## HTCondor Scripts
+
+The `condor/` directory contains submit scripts for batch generation on CERN lxplus:
+
+- **`condor/generate_pu_pool.sh`** / **`condor/generate_pu_pool.sub`** — Pileup pool generation. Each job runs `generate-pu-pool` with a unique seed, producing one pool chunk.
+- **`condor/generate_jets.sh`** / **`condor/generate_jets.sub`** — Hard-scatter jet generation. Each job runs `truthjets` with a unique seed. Supports both `--process` presets and `--pythia-card` files.
+- **`condor/logs/`** — HTCondor stdout/stderr/log files (gitignored via `.gitkeep`).
+
+All config is passed at `condor_submit` time (no need to edit `.sub` files). Both wrappers handle the lxplus environment: source LCG_106, unset `PYTHIA8DATA`, activate venv.
+
 ## Key Dependencies
 
 Core physics: `pythia8mc`, `fastjet`, `awkward>=2.0`, `vector`. Data I/O: `h5py`, `numpy`. Config: `pyyaml`.

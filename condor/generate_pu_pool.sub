@@ -1,0 +1,37 @@
+# HTCondor submit file for pileup pool generation on lxplus.
+#
+# Usage:
+#   seq 1 100 > seeds.txt
+#   condor_submit generate_pu_pool.sub \
+#       project_dir=/afs/cern.ch/user/j/jsmith/truth-jet-generation \
+#       output_dir=/eos/user/j/jsmith/truthjets/pu_pool \
+#       n_events=100000
+#
+# Optional overrides (pass on condor_submit command line):
+#   extra_args="--ecm 14000"
+#   memory=8GB
+#   disk=4GB
+#   max_runtime=7200
+
+executable = $(project_dir)/condor/generate_pu_pool.sh
+arguments  = $(n_events) $(seed) $(output_dir)/chunk_$(seed).h5 $(extra_args)
+
+# Pass PROJECT_DIR to the wrapper script
+environment = "PROJECT_DIR=$(project_dir)"
+
+# AFS/EOS are mounted on lxplus workers — no file transfer needed
+should_transfer_files = NO
+
+output = $(project_dir)/condor/logs/pu_pool_$(seed).out
+error  = $(project_dir)/condor/logs/pu_pool_$(seed).err
+log    = $(project_dir)/condor/logs/pu_pool.log
+
+request_cpus   = 1
+request_memory = 4GB
+request_disk   = 2GB
++MaxRuntime    = 7200
+
+# Defaults for optional variables
+extra_args =
+
+queue seed from seeds.txt
