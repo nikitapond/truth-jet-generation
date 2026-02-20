@@ -7,6 +7,7 @@ from truthjets.cluster import safe_eta
 from truthjets.config import JetConfig
 from truthjets.label import label_jets
 from truthjets.modules import ModuleResult, TruthJetModule
+from truthjets.utils import NEUTRINO_PDGIDS, delta_r
 
 
 class HadronConeExclLabelModule(TruthJetModule):
@@ -26,14 +27,6 @@ class HadronConeExclLabelModule(TruthJetModule):
         return ModuleResult(labels=new_labels)
 
 
-# PDG IDs for large-R resonances
-_RESONANCE_PDGIDS = {
-    "W": 24,
-    "Z": 23,
-    "H": 25,
-    "top": 6,
-}
-
 # Labels use PDG IDs; priority order (last write wins): W -> Z -> H -> top
 _LARGE_R_PRIORITY = [
     (24, 24),  # W
@@ -41,23 +34,6 @@ _LARGE_R_PRIORITY = [
     (25, 25),  # H
     (6, 6),  # top
 ]
-
-
-def _delta_phi(phi1, phi2):
-    """Compute delta-phi, wrapped to [-pi, pi]."""
-    dphi = phi1 - phi2
-    return (dphi + np.pi) % (2 * np.pi) - np.pi
-
-
-def _delta_r(eta1, phi1, eta2, phi2):
-    """Compute delta-R between two sets of (eta, phi)."""
-    deta = eta1 - eta2
-    dphi = _delta_phi(phi1, phi2)
-    return np.sqrt(deta**2 + dphi**2)
-
-
-# Neutrino PDG IDs (invisible decay products)
-_NEUTRINO_PDGIDS = {12, 14, 16}
 
 
 def _has_visible_decay(particles, res_mask):
@@ -114,7 +90,7 @@ def _has_visible_decay(particles, res_mask):
             if j < len(flat_id):
                 did = flat_id[j]
                 # Skip self-copies and neutrinos
-                if did != own_id and did not in _NEUTRINO_PDGIDS:
+                if did != own_id and did not in NEUTRINO_PDGIDS:
                     has_visible[i] = True
                     break
 
@@ -178,7 +154,7 @@ def label_large_r_jets(events, jet_eta, jet_phi, R):
         jet_eta_bcast, res_eta_bcast = ak.unzip(ak.cartesian([jet_eta, res_eta], nested=True))
         jet_phi_bcast, res_phi_bcast = ak.unzip(ak.cartesian([jet_phi, res_phi], nested=True))
 
-        dr = _delta_r(jet_eta_bcast, jet_phi_bcast, res_eta_bcast, res_phi_bcast)
+        dr = delta_r(jet_eta_bcast, jet_phi_bcast, res_eta_bcast, res_phi_bcast)
 
         # Check if any resonance particle is within cone
         matched = ak.any(dr < R, axis=-1)

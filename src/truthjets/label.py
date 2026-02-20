@@ -4,6 +4,7 @@ import awkward as ak
 import numpy as np
 
 from truthjets.cluster import safe_eta
+from truthjets.utils import delta_r
 
 
 def is_b_hadron(pdg_id):
@@ -32,38 +33,46 @@ def is_tau_lepton(pdg_id):
     return np.abs(pdg_id) == 15
 
 
-def final_b_hadron_mask(particles):
-    """Return a boolean mask selecting only weakly-decaying b-hadrons.
+def _final_hadron_mask(particles, flavor_check):
+    """Return a boolean mask selecting only weakly-decaying hadrons of a given flavor.
 
-    A b-hadron is "final" (weakly decaying) if none of its daughters
-    in the Pythia event record are also b-hadrons. This filters out
-    excited states (B**, B*) that decay via strong/EM interactions
-    to ground-state B mesons.
+    A hadron is "final" (weakly decaying) if none of its daughters
+    in the Pythia event record are also hadrons of the same flavor.
+    This filters out excited states (e.g. B**, D*) that decay via
+    strong/EM interactions to ground-state mesons.
 
     Parameters
     ----------
     particles : ak.Array
         Pythia particle record (events x particles) with fields
         ``id``, ``daughter1``, ``daughter2``.
+    flavor_check : callable
+        Function that takes pdg_id and returns a boolean mask
+        (e.g. ``is_b_hadron``, ``is_c_hadron``).
 
     Returns
     -------
     mask : ak.Array
-        Boolean mask (events x particles), True for weakly-decaying b-hadrons.
+        Boolean mask (events x particles), True for weakly-decaying hadrons.
     """
     prt_id = particles.id
+    flavor_flag = flavor_check(prt_id)
+
+    # If daughter fields aren't present (e.g. in tests with mock events),
+    # fall back to matching all hadrons of this flavor.
+    if "daughter1" not in particles.fields:
+        return flavor_flag
+
     d1 = particles.daughter1
     d2 = particles.daughter2
-
-    b_flag = is_b_hadron(prt_id)
 
     # Flatten to numpy for efficient prefix-sum computation
     counts = ak.num(prt_id)
     counts_np = ak.to_numpy(counts)
     global_offsets = np.concatenate([[0], np.cumsum(counts_np)])
 
-    flat_b = ak.to_numpy(ak.flatten(b_flag)).astype(np.int32)
-    flat_cumsum = np.concatenate([[0], np.cumsum(flat_b)])
+    flat_flavor = ak.to_numpy(ak.flatten(flavor_flag)).astype(np.int32)
+    flat_cumsum = np.concatenate([[0], np.cumsum(flat_flavor)])
 
     flat_d1 = ak.to_numpy(ak.flatten(d1))
     flat_d2 = ak.to_numpy(ak.flatten(d2))
@@ -76,28 +85,31 @@ def final_b_hadron_mask(particles):
     # Particles with d1==0 have no daughters in Pythia convention
     has_daughters = flat_d1 > 0
 
-    # Count b-hadron daughters via prefix sum: sum(b_flag[d1:d2+1])
+    # Count same-flavor daughters via prefix sum: sum(flavor_flag[d1:d2+1])
     safe_d1 = np.where(has_daughters, global_d1, 0)
     safe_d2 = np.where(has_daughters, global_d2, 0)
-    n_b_daughters = flat_cumsum[safe_d2 + 1] - flat_cumsum[safe_d1]
-    n_b_daughters = np.where(has_daughters, n_b_daughters, 0)
+    n_flavor_daughters = flat_cumsum[safe_d2 + 1] - flat_cumsum[safe_d1]
+    n_flavor_daughters = np.where(has_daughters, n_flavor_daughters, 0)
 
-    flat_is_final_b = ak.to_numpy(ak.flatten(b_flag)) & (n_b_daughters == 0)
+    flat_is_final = ak.to_numpy(ak.flatten(flavor_flag)) & (n_flavor_daughters == 0)
 
-    return ak.unflatten(flat_is_final_b, counts)
-
-
-def _delta_phi(phi1, phi2):
-    """Compute delta-phi, wrapped to [-pi, pi]."""
-    dphi = phi1 - phi2
-    return (dphi + np.pi) % (2 * np.pi) - np.pi
+    return ak.unflatten(flat_is_final, counts)
 
 
-def _delta_r(eta1, phi1, eta2, phi2):
-    """Compute delta-R between two sets of (eta, phi)."""
-    deta = eta1 - eta2
-    dphi = _delta_phi(phi1, phi2)
-    return np.sqrt(deta**2 + dphi**2)
+def final_b_hadron_mask(particles):
+    """Return a boolean mask selecting only weakly-decaying b-hadrons.
+
+    See ``_final_hadron_mask`` for details.
+    """
+    return _final_hadron_mask(particles, is_b_hadron)
+
+
+def final_c_hadron_mask(particles):
+    """Return a boolean mask selecting only weakly-decaying c-hadrons.
+
+    See ``_final_hadron_mask`` for details.
+    """
+    return _final_hadron_mask(particles, is_c_hadron)
 
 
 def label_jets(events, jet_eta, jet_phi, R):
@@ -131,9 +143,11 @@ def label_jets(events, jet_eta, jet_phi, R):
     prt_phi = np.arctan2(py, px)
     prt_id = particles.id
 
-    # Identify b-hadrons, c-hadrons, and taus in the event record
-    b_mask = is_b_hadron(prt_id)
-    c_mask = is_c_hadron(prt_id)
+    # Identify weakly-decaying b/c-hadrons and taus in the event record
+    # Using final hadron masks filters out excited states (B**, D*, etc.)
+    # that decay via strong/EM interactions, consistent with ATLAS convention.
+    b_mask = final_b_hadron_mask(particles)
+    c_mask = final_c_hadron_mask(particles)
     tau_mask = is_tau_lepton(prt_id)
 
     # Start with all-light labels (zeros matching jet shape)
@@ -153,7 +167,7 @@ def label_jets(events, jet_eta, jet_phi, R):
         jet_eta_bcast, flav_eta_bcast = ak.unzip(ak.cartesian([jet_eta, flavor_eta], nested=True))
         jet_phi_bcast, flav_phi_bcast = ak.unzip(ak.cartesian([jet_phi, flavor_phi], nested=True))
 
-        dr = _delta_r(jet_eta_bcast, jet_phi_bcast, flav_eta_bcast, flav_phi_bcast)
+        dr = delta_r(jet_eta_bcast, jet_phi_bcast, flav_eta_bcast, flav_phi_bcast)
 
         # Check if any flavor particle is within cone
         matched = ak.any(dr < R, axis=-1)

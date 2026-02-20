@@ -13,6 +13,7 @@ from truthjets.config import (
     JetConfig,
     OutputConfig,
     PythiaConfig,
+    apply_cli_overrides,
     load_jet_and_output_config,
     load_pythia_config,
     resolve_card,
@@ -62,10 +63,10 @@ def parse_args(argv=None):
         default=None,
         help="Pythia card: a built-in name (e.g. ttbar, qcd, zprime_tt) or path to a .cmnd file",
     )
-    parser.add_argument("--ecm", type=float, default=13600.0, help="Center-of-mass energy in GeV")
+    parser.add_argument("--ecm", type=float, default=None, help="Center-of-mass energy in GeV (default: 13600)")
     parser.add_argument("--pt-hat-min", type=float, default=None)
     parser.add_argument("--pt-hat-max", type=float, default=None)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=None, help="Random seed (default: 42)")
     parser.add_argument(
         "--pu",
         type=float,
@@ -89,20 +90,20 @@ def parse_args(argv=None):
     )
 
     # Jet settings
-    parser.add_argument("-R", type=float, default=0.4, help="Jet radius")
-    parser.add_argument("--jet-pt-min", type=float, default=20.0, help="Minimum jet pT in GeV")
-    parser.add_argument("--jet-eta-max", type=float, default=2.5, help="Maximum jet |eta|")
+    parser.add_argument("-R", type=float, default=None, help="Jet radius (default: 0.4)")
+    parser.add_argument("--jet-pt-min", type=float, default=None, help="Minimum jet pT in GeV (default: 20)")
+    parser.add_argument("--jet-eta-max", type=float, default=None, help="Maximum jet |eta| (default: 2.5)")
     parser.add_argument(
         "--constituent-pt-min",
         type=float,
-        default=0.5,
+        default=None,
         help="Minimum constituent pT in GeV (default: 0.5)",
     )
     parser.add_argument(
         "--max-constituents",
         type=int,
-        default=80,
-        help="Max constituents per jet (zero-padded)",
+        default=None,
+        help="Max constituents per jet (zero-padded, default: 80)",
     )
 
     # Pileup rejection
@@ -114,7 +115,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--softkiller-grid",
         type=float,
-        default=0.4,
+        default=None,
         help="SoftKiller grid size in rapidity-phi (default: 0.4)",
     )
     parser.add_argument(
@@ -125,9 +126,9 @@ def parse_args(argv=None):
     )
 
     # Output settings
-    parser.add_argument("-o", "--output", default="jets.h5", help="Output HDF5 path")
-    parser.add_argument("-n", "--n-events", type=int, default=100_000, help="Number of events")
-    parser.add_argument("--batch-size", type=int, default=10_000, help="Events per batch")
+    parser.add_argument("-o", "--output", default=None, help="Output HDF5 path (default: jets.h5)")
+    parser.add_argument("-n", "--n-events", type=int, default=None, help="Number of events (default: 100000)")
+    parser.add_argument("--batch-size", type=int, default=None, help="Events per batch (default: 10000)")
 
     # Pipeline modules
     parser.add_argument(
@@ -184,36 +185,44 @@ def main(argv=None):
     if pythia_config.pythia_card is None:
         raise SystemExit("error: must specify --process or --pythia-card")
 
-    pythia_config.ecm = args.ecm
-    pythia_config.seed = args.seed
-    if args.pt_hat_min is not None:
-        pythia_config.pt_hat_min = args.pt_hat_min
-    if args.pt_hat_max is not None:
-        pythia_config.pt_hat_max = args.pt_hat_max
-
-    jet_config.R = args.R
-    jet_config.pt_min = args.jet_pt_min
-    jet_config.eta_max = args.jet_eta_max
-    jet_config.constituent_pt_min = args.constituent_pt_min
-    jet_config.max_constituents = args.max_constituents
+    # CLI flags override config file values (only when explicitly provided)
+    apply_cli_overrides(
+        pythia_config,
+        args,
+        {
+            "ecm": "ecm",
+            "seed": "seed",
+            "pt_hat_min": "pt_hat_min",
+            "pt_hat_max": "pt_hat_max",
+            "pu": "mu",
+            "pu_pre_gen": "pu_pre_gen",
+            "pu_file": "pu_file",
+        },
+    )
+    apply_cli_overrides(
+        jet_config,
+        args,
+        {
+            "R": "R",
+            "jet_pt_min": "pt_min",
+            "jet_eta_max": "eta_max",
+            "constituent_pt_min": "constituent_pt_min",
+            "max_constituents": "max_constituents",
+            "softkiller_grid": "softkiller_grid",
+            "max_dz": "max_dz",
+        },
+    )
     if args.softkiller:
         jet_config.softkiller = True
-    jet_config.softkiller_grid = args.softkiller_grid
-    if args.max_dz is not None:
-        jet_config.max_dz = args.max_dz
-    output_config.output_path = args.output
-    output_config.n_events = args.n_events
-    output_config.batch_size = args.batch_size
-
-    # Set pileup mu from CLI
-    if args.pu is not None:
-        pythia_config.mu = args.pu
-
-    # Pileup pool settings
-    if args.pu_pre_gen is not None:
-        pythia_config.pu_pre_gen = args.pu_pre_gen
-    if args.pu_file is not None:
-        pythia_config.pu_file = args.pu_file
+    apply_cli_overrides(
+        output_config,
+        args,
+        {
+            "output": "output_path",
+            "n_events": "n_events",
+            "batch_size": "batch_size",
+        },
+    )
 
     # Validate pileup pool flags
     if pythia_config.pu_pre_gen is not None and pythia_config.pu_file is not None:

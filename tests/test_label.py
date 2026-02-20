@@ -4,12 +4,12 @@ import awkward as ak
 import numpy as np
 
 from truthjets.label import (
-    _delta_r,
     is_b_hadron,
     is_c_hadron,
     is_tau_lepton,
     label_jets,
 )
+from truthjets.utils import delta_r
 
 
 class TestPDGClassification:
@@ -63,16 +63,16 @@ class TestPDGClassification:
 
 class TestDeltaR:
     def test_same_point(self):
-        dr = _delta_r(np.array([1.0]), np.array([1.0]), np.array([1.0]), np.array([1.0]))
+        dr = delta_r(np.array([1.0]), np.array([1.0]), np.array([1.0]), np.array([1.0]))
         np.testing.assert_allclose(dr, 0.0, atol=1e-10)
 
     def test_known_distance(self):
-        dr = _delta_r(np.array([0.0]), np.array([0.0]), np.array([0.3]), np.array([0.4]))
+        dr = delta_r(np.array([0.0]), np.array([0.0]), np.array([0.3]), np.array([0.4]))
         np.testing.assert_allclose(dr, 0.5, atol=1e-10)
 
     def test_phi_wrapping(self):
         # Points near +pi and -pi should be close
-        dr = _delta_r(np.array([0.0]), np.array([3.1]), np.array([0.0]), np.array([-3.1]))
+        dr = delta_r(np.array([0.0]), np.array([3.1]), np.array([0.0]), np.array([-3.1]))
         assert dr[0] < 0.1  # Should be ~0.083, not ~6.2
 
 

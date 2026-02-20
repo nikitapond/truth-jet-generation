@@ -87,12 +87,12 @@ truthjets --process zprime_tt -n 100000 -o zprime_jets.h5
 
 ## Plotting
 
-Four plotting scripts are provided in `scripts/`:
+Four plotting commands are installed as entry points:
 
-### `plot_jets.py` — Jet-level distributions
+### `plot-jets` — Jet-level distributions
 
 ```bash
-python scripts/plot_jets.py <input.h5> [-o jets.pdf]
+plot-jets <input.h5> [-o jets.pdf]
 ```
 
 | Argument | Default | Description |
@@ -100,10 +100,10 @@ python scripts/plot_jets.py <input.h5> [-o jets.pdf]
 | `input` | (required) | Input HDF5 file |
 | `-o`, `--output` | `jets.pdf` | Output PDF path |
 
-### `plot_events.py` — Event-level distributions
+### `plot-events` — Event-level distributions
 
 ```bash
-python scripts/plot_events.py <input.h5> [-o events.pdf]
+plot-events <input.h5> [-o events.pdf]
 ```
 
 | Argument | Default | Description |
@@ -111,10 +111,10 @@ python scripts/plot_events.py <input.h5> [-o events.pdf]
 | `input` | (required) | Input HDF5 file |
 | `-o`, `--output` | `events.pdf` | Output PDF path |
 
-### `plot_constituents.py` — Constituent-level distributions
+### `plot-constituents` — Constituent-level distributions
 
 ```bash
-python scripts/plot_constituents.py <input.h5> [-o constituents.pdf]
+plot-constituents <input.h5> [-o constituents.pdf]
 ```
 
 | Argument | Default | Description |
@@ -122,10 +122,10 @@ python scripts/plot_constituents.py <input.h5> [-o constituents.pdf]
 | `input` | (required) | Input HDF5 file |
 | `-o`, `--output` | `constituents.pdf` | Output PDF path |
 
-### `plot_all.py` — Run all plot scripts at once
+### `plot-all` — Run all plot commands at once
 
 ```bash
-python scripts/plot_all.py <input.h5> [-o plots/]
+plot-all <input.h5> [-o plots/]
 ```
 
 | Argument | Default | Description |
