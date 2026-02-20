@@ -48,8 +48,11 @@ create-vds /path/to/parts/ -o combined.h5
 # Benchmark pipeline stages
 truthjets --pythia-card ttbar -n 10000 -o ttbar.h5 --benchmark
 
-# Plot output
-python scripts/plot_jets.py output.h5 -o plots.pdf
+# Plot output (installed entry points)
+plot-jets output.h5 -o jets.pdf
+plot-events output.h5 -o events.pdf
+plot-constituents output.h5 -o constituents.pdf
+plot-all output.h5 -o plots/
 ```
 
 ## CI
