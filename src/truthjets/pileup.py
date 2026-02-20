@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 
 from truthjets.h5utils import H5_COMPRESSION
+from truthjets.utils import filter_neutrinos
 
 
 def sample_n_pileup(mu: float, n_events: int, rng: np.random.Generator) -> np.ndarray:
@@ -50,9 +51,10 @@ def overlay_pileup(
         Merged particle arrays (events x particles) with fields
         {px, py, pz, E, pdgId, is_pu, vz}, ready for jet clustering.
     """
-    # Extract HS final-state particles
+    # Extract HS final-state particles (excluding neutrinos)
     hs_prt = hs_events.prt
     hs_final = hs_prt[hs_prt.status > 0]
+    hs_final = filter_neutrinos(hs_final)
 
     hs_records = ak.zip(
         {
@@ -96,9 +98,10 @@ def overlay_pileup(
             }
         )
     else:
-        # Extract PU final-state particles from Pythia events
+        # Extract PU final-state particles from Pythia events (excluding neutrinos)
         pu_prt = pu_events.prt
         pu_final = pu_prt[pu_prt.status > 0]
+        pu_final = filter_neutrinos(pu_final)
 
         # Broadcast interaction-level vz to each particle in that interaction
         n_particles_per_pu_event = ak.num(pu_final, axis=1)
@@ -156,6 +159,7 @@ def generate_pileup_pool(pythia_pu, n_events: int, batch_size: int = 10_000) -> 
 
         prt = events.prt
         final = prt[prt.status > 0]
+        final = filter_neutrinos(final)
 
         all_px.append(final.p.px)
         all_py.append(final.p.py)

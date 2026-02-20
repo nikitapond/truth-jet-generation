@@ -14,7 +14,8 @@ def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
     # Apply process settings from card file
     if config.pythia_card is None:
         raise ValueError("pythia_card must be set (use resolve_card() to resolve short names)")
-    pythia.readFile(config.pythia_card)
+    if not pythia.readFile(config.pythia_card):
+        raise RuntimeError(f"Pythia failed to read card file: {config.pythia_card}")
 
     # Beam settings
     pythia.readString(f"Beams:eCM = {config.ecm}")
@@ -42,7 +43,8 @@ def init_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
     for setting in config.extra_settings:
         pythia.readString(setting)
 
-    pythia.init()
+    if not pythia.init():
+        raise RuntimeError("Pythia initialization failed (check card settings and beam configuration)")
     return pythia
 
 
@@ -65,7 +67,8 @@ def init_pileup_pythia(config: PythiaConfig) -> pythia8mc.Pythia:
 
     pythia.readString("Print:quiet = on")
 
-    pythia.init()
+    if not pythia.init():
+        raise RuntimeError("Pileup Pythia initialization failed")
     return pythia
 
 

@@ -41,6 +41,25 @@ class OutputConfig:
     batch_size: int = 10_000
 
 
+def apply_cli_overrides(config, args, mapping: dict[str, str]) -> None:
+    """Apply non-None CLI args to a config dataclass.
+
+    Parameters
+    ----------
+    config : dataclass instance
+        Target config object (e.g. PythiaConfig, JetConfig, OutputConfig).
+    args : argparse.Namespace
+        Parsed CLI arguments.
+    mapping : dict
+        Maps argparse attribute names to config field names,
+        e.g. ``{"ecm": "ecm", "jet_pt_min": "pt_min"}``.
+    """
+    for arg_name, field_name in mapping.items():
+        value = getattr(args, arg_name, None)
+        if value is not None:
+            setattr(config, field_name, value)
+
+
 def resolve_card(name_or_path: str) -> str:
     """Resolve a card short name or file path to an absolute card path.
 

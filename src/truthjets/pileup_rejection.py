@@ -47,34 +47,34 @@ def softkiller(particles, grid_size: float = 0.4, rapidity_max: float = 5.0):
     y_edges = np.linspace(-rapidity_max, rapidity_max, n_y_bins + 1)
     phi_edges = np.linspace(-np.pi, np.pi, n_phi_bins + 1)
 
-    # Process each event to find its pT cut
-    # Flatten to per-event processing
+    # Vectorized SoftKiller: flatten all particles, compute patch indices
+    # with a per-event offset, then scatter-max into a (n_events x n_patches) array.
     n_events = len(particles)
-    pt_cuts = np.zeros(n_events, dtype=np.float32)
+    counts = ak.num(pt, axis=1)
+    counts_np = ak.to_numpy(counts)
 
-    flat_pt = ak.to_list(pt)
-    flat_rapidity = ak.to_list(rapidity)
-    flat_phi = ak.to_list(phi)
+    flat_pt = ak.to_numpy(ak.flatten(pt)).astype(np.float32)
+    flat_y = ak.to_numpy(ak.flatten(rapidity)).astype(np.float32)
+    flat_phi = ak.to_numpy(ak.flatten(phi)).astype(np.float32)
 
-    for ievt in range(n_events):
-        evt_pt = np.asarray(flat_pt[ievt], dtype=np.float32)
-        evt_y = np.asarray(flat_rapidity[ievt], dtype=np.float32)
-        evt_phi = np.asarray(flat_phi[ievt], dtype=np.float32)
+    # Digitize all particles at once
+    y_bin = np.clip(np.digitize(flat_y, y_edges) - 1, 0, n_y_bins - 1)
+    phi_bin = np.clip(np.digitize(flat_phi, phi_edges) - 1, 0, n_phi_bins - 1)
+    patch_idx = y_bin * n_phi_bins + phi_bin
 
-        if len(evt_pt) == 0:
-            pt_cuts[ievt] = 0.0
-            continue
+    # Event index per particle
+    event_idx = np.repeat(np.arange(n_events), counts_np)
 
-        # Digitize particles into grid bins
-        y_bin = np.clip(np.digitize(evt_y, y_edges) - 1, 0, n_y_bins - 1)
-        phi_bin = np.clip(np.digitize(evt_phi, phi_edges) - 1, 0, n_phi_bins - 1)
-        patch_idx = y_bin * n_phi_bins + phi_bin
+    # Global index into (n_events x n_patches) flattened array
+    global_patch_idx = event_idx * n_patches + patch_idx
 
-        # Find max pT per patch (patches with no particles contribute 0)
-        max_pt_per_patch = np.zeros(n_patches, dtype=np.float32)
-        np.maximum.at(max_pt_per_patch, patch_idx, evt_pt)
+    # Scatter max pT into per-event patches
+    max_pt_grid = np.zeros(n_events * n_patches, dtype=np.float32)
+    np.maximum.at(max_pt_grid, global_patch_idx, flat_pt)
+    max_pt_grid = max_pt_grid.reshape(n_events, n_patches)
 
-        pt_cuts[ievt] = np.median(max_pt_per_patch)
+    # Median of per-patch max pT gives the SoftKiller threshold per event
+    pt_cuts = np.median(max_pt_grid, axis=1).astype(np.float32)
 
     # Broadcast pt_cut to particle level and apply mask
     pt_cut_bcast = ak.Array(pt_cuts)[:, np.newaxis] * ak.ones_like(pt)

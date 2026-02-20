@@ -5,6 +5,7 @@ import fastjet
 import numpy as np
 
 from truthjets.config import JetConfig
+from truthjets.utils import filter_neutrinos
 
 # Largest safe argument to arctanh (avoids inf at ±1)
 _ARCTANH_CLAMP = 1.0 - 1e-10
@@ -26,9 +27,6 @@ _ALGORITHMS = {
 }
 
 
-_NEUTRINO_PDGIDS = {12, 14, 16}
-
-
 def extract_particles(events):
     """Extract visible final-state particles from Pythia events.
 
@@ -48,9 +46,7 @@ def extract_particles(events):
     """
     prt = events.prt
     final = prt[prt.status > 0]
-    abs_id = np.abs(final.id)
-    is_neutrino = (abs_id == 12) | (abs_id == 14) | (abs_id == 16)
-    final = final[~is_neutrino]
+    final = filter_neutrinos(final)
     return ak.zip(
         {
             "px": final.p.px,

@@ -7,19 +7,7 @@ from truthjets.cluster import safe_eta
 from truthjets.config import JetConfig
 from truthjets.label import final_b_hadron_mask
 from truthjets.modules import ModuleResult, TruthJetModule
-
-
-def _delta_phi(phi1, phi2):
-    """Compute delta-phi, wrapped to [-pi, pi]."""
-    dphi = phi1 - phi2
-    return (dphi + np.pi) % (2 * np.pi) - np.pi
-
-
-def _delta_r(eta1, phi1, eta2, phi2):
-    """Compute delta-R between two sets of (eta, phi)."""
-    deta = eta1 - eta2
-    dphi = _delta_phi(phi1, phi2)
-    return np.sqrt(deta**2 + dphi**2)
+from truthjets.utils import delta_r
 
 
 class BBOpeningAngleModule(TruthJetModule):
@@ -62,7 +50,7 @@ class BBOpeningAngleModule(TruthJetModule):
         j_eta, bh_eta = ak.unzip(jet_b_eta)
         j_phi, bh_phi = ak.unzip(jet_b_phi)
 
-        dr_to_jet = _delta_r(j_eta, j_phi, bh_eta, bh_phi)
+        dr_to_jet = delta_r(j_eta, j_phi, bh_eta, bh_phi)
 
         # Boolean mask: which b-hadrons are within the jet cone
         # Shape: (events x jets x b_hadrons)
@@ -91,7 +79,7 @@ class BBOpeningAngleModule(TruthJetModule):
         phi1 = ak.where(has_two, ak.fill_none(padded_phi[..., 0], 0.0), 0.0)
         phi2 = ak.where(has_two, ak.fill_none(padded_phi[..., 1], 0.0), 0.0)
 
-        bb_dr = _delta_r(eta1, phi1, eta2, phi2)
+        bb_dr = delta_r(eta1, phi1, eta2, phi2)
 
         # Set NaN for jets without exactly 2 matched b-hadrons
         bb_dr = ak.where(has_two, bb_dr, np.nan)

@@ -169,6 +169,7 @@ All physics processes are configured via `.cmnd` card files shipped in `src/trut
 - **`zprime_tt`** — Z' → ttbar at 3 TeV.
 - **`z_qq`** — Boosted Z+jets with Z → qq (hadronic). `pTHatMin = 200`.
 - **`zh_llbb`** — ZH associated production with H → bb, Z → ll. `pTHatMin = 150`.
+- **`zh_vvbb`** — ZH associated production with H → bb, Z → vv (invisible). `pTHatMin = 150`.
 
 `--process` and `--pythia-card` are aliases — both accept a built-in card name or a path to a `.cmnd` file.
 
